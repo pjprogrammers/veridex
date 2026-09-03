@@ -1,0 +1,90 @@
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+ENV/
+env/
+
+*.egg-info/
+.eggs/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+
+# =========================
+# Node / Next.js
+# =========================
+node_modules/
+.next/
+out/
+dist/
+build/
+
+*.tsbuildinfo
+next-env.d.ts
+
+# =========================
+# Turborepo
+# =========================
+.turbo/
+
+# =========================
+# Vercel
+# =========================
+.vercel/
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Certificates / Private Keys
+# =========================
+*.pem
+*.key
+
+# =========================
+# Secrets / Local credentials
+# =========================
+secrets/
+
+# =========================
+# Temporary / Generated files
+# =========================
+*.tmp
+*.temp
+
+# =========================
+# Local uploads / runtime data
+# =========================
+uploads/

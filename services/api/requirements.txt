@@ -1,0 +1,33 @@
+# Core API dependencies (validated against Python 3.11)
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+sqlalchemy==2.0.35
+alembic==1.13.3
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+redis==5.1.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.12
+httpx==0.27.2
+minio==7.2.10
+structlog==24.4.0
+email-validator==2.2.0
+
+# AI/CV (heavy, run in Docker with compatible Python)
+# PaddleOCR and InsightFace are installed via requirements-ai.txt
+# to keep core image lean and JIT-compatible with newer Pythons.
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+Pillow==10.4.0
+scikit-learn==1.5.2
+
+# Testing / tooling
+pytest==8.3.3
+pytest-asyncio==0.24.0
+ruff==0.6.9
+mypy==1.11.2
+types-python-jose==3.5.0.20260408
+types-passlib==1.7.7.20260211
