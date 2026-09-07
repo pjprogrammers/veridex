@@ -34,8 +34,9 @@ function serviceIcon(name: string) {
   return Server;
 }
 
-export default function SystemHealthPage() {
+export default function SystemPage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [ready, setReady] = useState<HealthStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,12 +44,16 @@ export default function SystemHealthPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${ORIGIN}/health`);
-      if (!res.ok) throw new Error(`Health endpoint returned ${res.status}`);
-      setHealth((await res.json()) as HealthStatus);
+      const hRes = await fetch(`${ORIGIN}/health`);
+      const rRes = await fetch(`${ORIGIN}/ready`);
+      if (!hRes.ok || !rRes.ok)
+        throw new Error(`Health endpoint returned ${hRes.status}`);
+      setHealth((await hRes.json()) as HealthStatus);
+      setReady((await rRes.json()) as HealthStatus);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to reach the API");
       setHealth(null);
+      setReady(null);
     } finally {
       setLoading(false);
     }
@@ -58,7 +63,7 @@ export default function SystemHealthPage() {
     load();
   }, [load]);
 
-  const services = Object.entries(health?.services ?? {});
+  const services = Object.entries(ready?.services ?? {});
   const okCount = services.filter(([, s]) => s === "ok").length;
   const errorCount = services.length - okCount;
 
@@ -66,6 +71,8 @@ export default function SystemHealthPage() {
     { name: "Operational", value: okCount },
     { name: "Unreachable", value: errorCount },
   ];
+
+  const overall = ready?.status ?? health?.status ?? null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -80,19 +87,19 @@ export default function SystemHealthPage() {
           <span
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
-              !health
+              !overall
                 ? "bg-slate-100 text-slate-600 ring-slate-500/20"
-                : health.status === "ok"
+                : overall === "ok"
                   ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-                  : health.status === "degraded"
+                  : overall === "degraded"
                     ? "bg-amber-50 text-amber-700 ring-amber-600/20"
                     : "bg-red-50 text-red-700 ring-red-600/20",
             )}
           >
-            {health ? (
+            {overall ? (
               <>
                 <Activity className="h-3.5 w-3.5" />
-                {health.status.toUpperCase()}
+                {overall.toUpperCase()}
               </>
             ) : (
               "UNKNOWN"
@@ -111,12 +118,12 @@ export default function SystemHealthPage() {
         </Alert>
       ) : null}
 
-      {!health && !error ? (
+      {!ready && !error ? (
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
         </div>
-      ) : health ? (
+      ) : ready ? (
         <>
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="p-5">
@@ -148,10 +155,10 @@ export default function SystemHealthPage() {
             </Card>
             <Card className="p-5">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Overall status
+                Readiness
               </div>
               <div className="mt-2 text-2xl font-bold text-slate-800">
-                {health.status.toUpperCase()}
+                {ready.status.toUpperCase()}
               </div>
             </Card>
           </div>
@@ -218,8 +225,8 @@ export default function SystemHealthPage() {
           </Card>
 
           <p className="text-xs text-slate-400">
-            Last checked {new Date(health.timestamp).toLocaleString()} · The
-            health endpoint reports connectivity to PostgreSQL, Redis and
+            Last checked {new Date(ready.timestamp).toLocaleString()} · The
+            readiness endpoint reports connectivity to PostgreSQL, Redis and
             MinIO; a degraded status does not necessarily block all features.
           </p>
         </>

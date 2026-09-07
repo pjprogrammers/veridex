@@ -14,13 +14,14 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Table,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.types import SafeUuid
 
 
 class TimestampMixin:
@@ -28,28 +29,58 @@ class TimestampMixin:
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+# ---------------------------------------------------------------------------
+# RBAC — roles / permissions
+# ---------------------------------------------------------------------------
+
+# Association table: users <-> roles
+user_roles = Table(
+    "user_roles",
+    Base.metadata,
+    Column("user_id", SafeUuid(), ForeignKey("users.id"), primary_key=True),  # type: ignore[var-annotated]
+    Column("role_id", SafeUuid(), ForeignKey("roles.id"), primary_key=True),  # type: ignore[var-annotated]
+)
+
+
+class Role(TimestampMixin, Base):
+    """Authoritative role definition.  RBAC decisions are read from here,
+    not from the ``users.role`` legacy column."""
+    __tablename__ = "roles"
+
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
+    name = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    permissions = Column(JSON, default=list)  # e.g. ["cases:read", "cases:write", "audit:read"]
+
+    users = relationship("User", secondary=user_roles, back_populates="roles", lazy="selectin")
+
+
 class User(TimestampMixin, Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
     username = Column(String(255), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255))
+    # Legacy string column kept for JWT backward-compat; RBAC source-of-truth
+    # is the users -> user_roles -> roles graph.
     role = Column(String(50), nullable=False, default="officer")
     is_active = Column(Boolean, default=True)
+
+    roles = relationship("Role", secondary=user_roles, back_populates="users", lazy="selectin")
 
 
 class VerificationCase(TimestampMixin, Base):
     __tablename__ = "verification_cases"
     __table_args__ = (Index("ix_case_status_created", "status", "created_at"),)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
     case_number = Column(String(50), unique=True, nullable=False, index=True)
     status = Column(String(50), nullable=False, default="in_review", index=True)
     risk_level = Column(String(20), nullable=False, default="unknown", index=True)
     risk_score = Column(Float, default=0.0)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by = Column(SafeUuid(), ForeignKey("users.id"))  # type: ignore[var-annotated]
     description = Column(Text)
     document_hash = Column(String(64))  # SHA-256
     case_metadata = Column(JSON, default=dict)
@@ -63,12 +94,19 @@ class VerificationCase(TimestampMixin, Base):
 class DocumentRecord(TimestampMixin, Base):
     __tablename__ = "document_records"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    case_id = Column(UUID(as_uuid=True), ForeignKey("verification_cases.id"))
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
+    case_id = Column(SafeUuid(), ForeignKey("verification_cases.id"))  # type: ignore[var-annotated]
     document_type = Column(String(50), index=True)
     country = Column(String(2))
     document_number = Column(String(50))
-    storage_key = Column(String(255))  # MinIO key
+    storage_key = Column(String(255))  # MinIO key (original)
+    original_key = Column(String(255))  # sanitized original object key
+    processed_key = Column(String(255))  # OCR-ready processed object key
+    preview_key = Column(String(255))  # lightweight preview object key
+    original_filename = Column(String(255))
+    status = Column(String(30), default="UPLOADED", index=True)
+    processing_error = Column(Text)
+    preprocess_metadata = Column(JSON, default=dict)
     content_hash = Column(String(64), unique=True, index=True)  # SHA-256
     mime_type = Column(String(100))
     file_size = Column(Integer)
@@ -77,6 +115,9 @@ class DocumentRecord(TimestampMixin, Base):
     mrz_data = Column(JSON, default=dict)
     forensic_data = Column(JSON, default=dict)
     extracted_fields = Column(JSON, default=dict)
+    verification_data = Column(JSON, default=dict)
+    classification_data = Column(JSON, default=dict)
+    ocr_extracted_fields = Column(JSON, default=dict)
 
     case = relationship("VerificationCase", back_populates="documents")
 
@@ -85,8 +126,8 @@ class VerificationCheck(TimestampMixin, Base):
     __tablename__ = "verification_checks"
     __table_args__ = (Index("ix_check_case_type", "case_id", "check_type"),)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    case_id = Column(UUID(as_uuid=True), ForeignKey("verification_cases.id"))
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
+    case_id = Column(SafeUuid(), ForeignKey("verification_cases.id"))  # type: ignore[var-annotated]
     check_type = Column(String(50), nullable=False)  # mrz_validation, ocr_cross_check, face_match, etc.
     status = Column(String(20), nullable=False, default="pending")  # passed, failed, warning, pending
     detail = Column(JSON, default=dict)
@@ -104,10 +145,10 @@ class AuditLog(Base):
         autoincrement=True,
     )
     case_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("verification_cases.id")
+        SafeUuid(), ForeignKey("verification_cases.id")
     )
     action: Mapped[str] = mapped_column(String(50), nullable=False)
-    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
+    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(SafeUuid())
     actor_role: Mapped[Optional[str]] = mapped_column(String(50))
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False, index=True
@@ -130,7 +171,7 @@ class RegistryEntry(TimestampMixin, Base):
         Index("ix_registry_doc_number", "document_number"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
     registry_type = Column(String(50), nullable=False)  # police, immigration, blacklist
     document_number = Column(String(50), nullable=False)
     status = Column(String(50), nullable=False)  # valid, reported_stolen, blacklisted, watchlist, expired
@@ -143,7 +184,7 @@ class StoredFace(TimestampMixin, Base):
     __tablename__ = "stored_faces"
     __table_args__ = (Index("ix_face_identity_id", "identity_id"),)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(SafeUuid(), primary_key=True, default=uuid.uuid4)  # type: ignore[var-annotated]
     identity_id = Column(String(100), nullable=False, index=True)  # synthetic identity ID
     embedding = Column(JSON, nullable=False)  # face embedding vector
     source_note = Column(String(255))

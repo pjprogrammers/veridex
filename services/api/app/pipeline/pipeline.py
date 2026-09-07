@@ -45,28 +45,43 @@ def load_image(data: bytes) -> np.ndarray:
 
 
 def _mrz_to_dict(result: mrz.MRZResult) -> dict:
+    """Convert a parsed MRZResult into a serializable dict."""
+    if not result.mrz_detected:
+        return {
+            "mrz_detected": False,
+            "mrz_valid": False,
+            "warnings": result.warnings,
+            "raw_lines": result.raw_mrz,
+        }
+    parsed = result.parsed_fields
     return {
-        "valid": result.valid,
+        "mrz_detected": True,
+        "mrz_valid": result.mrz_valid,
         "format": result.format,
-        "document_type": result.document_type,
-        "document_number": result.document_number,
-        "issuing_country": result.issuing_country,
-        "nationality": result.nationality,
-        "surname": result.surname,
-        "given_names": result.given_names,
-        "date_of_birth": result.date_of_birth,
-        "sex": result.sex,
-        "expiry_date": result.expiry_date,
-        "check_digits_valid": result.check_digits_valid,
-        "errors": result.errors,
-        "raw_lines": result.raw_lines,
+        "check_digits": result.check_digits,
+        "check_digits_valid": result.mrz_valid,
+        "raw_lines": result.raw_mrz,
+        "warnings": result.warnings,
+        # Flatten parsed fields for backward compatibility (verified/report
+        # consumers and the risk engine read these keys).
+        "document_type": parsed.get("document_code", ""),
+        "document_number": parsed.get("passport_number", ""),
+        "issuing_country": parsed.get("issuing_state", ""),
+        "nationality": parsed.get("nationality", ""),
+        "surname": parsed.get("surname", ""),
+        "given_names": parsed.get("given_names", ""),
+        "date_of_birth": parsed.get("date_of_birth", ""),
+        "sex": parsed.get("sex", ""),
+        "expiry_date": parsed.get("expiry_date", ""),
+        "personal_number": parsed.get("personal_number", ""),
+        "final_check_digit": parsed.get("final_check_digit", ""),
     }
 
 
 def _build_extracted_fields(analysis: DocumentAnalysis) -> dict:
     """Combine OCR text and MRZ data into structured identity fields."""
     fields: dict = {}
-    if analysis.mrz and analysis.mrz.get("valid"):
+    if analysis.mrz and analysis.mrz.get("mrz_valid"):
         fields.update(
             {
                 "document_number": analysis.mrz.get("document_number"),
@@ -118,7 +133,7 @@ def analyze_document(
     type_result = docktype.identify_document_type(
         image=image,
         ocr_text=result.ocr_text,
-        mrz_parsed=bool(result.mrz and result.mrz.get("valid")),
+        mrz_parsed=bool(result.mrz and result.mrz.get("mrz_valid")),
     )
     result.document_type = type_result["document_type"]
     result.type_confidence = type_result["confidence"]
@@ -130,39 +145,20 @@ def analyze_document(
 
 
 def _extract_mrz_from_ocr(words: list[dict]) -> mrz.MRZResult | None:
-    """Assemble candidate MRZ lines from OCR word boxes.
+    """Detect the MRZ region from OCR word boxes and parse it.
 
-    MRZ text appears as dense, evenly spaced uppercase lines. This constructs
-    lines by y-coordinate clustering and horizontal concatenation, then
-    attempts to parse them.
+    Uses ``mrz_region`` to find dense, evenly-spaced rows (the MRZ zone),
+    assembles candidate lines, then parses them with the ICAO validator.
     """
-    if not words:
+    from app.pipeline.mrz_region import extract_mrz_from_words
+
+    region = extract_mrz_from_words(words)
+    if not region.detected:
         return None
 
-    # Group words into rows by y-center bucket.
-    rows: dict[int, list] = {}
-    for w in words:
-        box = w.get("box")
-        if not box or len(box) < 4:
-            continue
-        y_center = int(sum(p[1] for p in box[:4]) / 4)
-        key = y_center // 12  # 12px vertical bucket
-        rows.setdefault(key, []).append(w)
-
-    candidate_lines = []
-    for key in sorted(rows):
-        row_words = sorted(rows[key], key=lambda w: min(p[0] for p in w["box"]))
-        line = "".join(
-            w["text"].replace(" ", "") for w in row_words if w["text"].isalnum()
-        )
-        if len(line) >= 30:
-            candidate_lines.append(line)
-
-    if not candidate_lines:
-        return None
-
-    parsed = mrz.parse_mrz(candidate_lines)
-    if parsed.valid:
+    parsed = mrz.parse_mrz(region.lines)
+    if parsed.mrz_detected:
+        # Surface region-level warnings onto the parse result.
+        parsed.warnings.extend(region.warnings)
         return parsed
-    # Fall back to trying each detectable line pair on raw words
     return None

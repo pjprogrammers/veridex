@@ -51,6 +51,8 @@ class Settings(BaseSettings):
 
     # OCR
     OCR_ENGINE: str = "paddleocr"
+    OCR_TIMEOUT_SECONDS: int = 30
+    OCR_MAX_RETRIES: int = 2
 
     # Face Verification
     FACE_MODEL_NAME: str = "arcface_r100_v1"

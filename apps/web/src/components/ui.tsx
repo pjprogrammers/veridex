@@ -195,3 +195,68 @@ export function Skeleton({ className }: { className?: string }) {
     <div className={cn("animate-pulse rounded-md bg-slate-200", className)} />
   );
 }
+
+export function Checkbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+      />
+      {label}
+    </label>
+  );
+}
+
+export function Progress({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("h-2 w-full overflow-hidden rounded-full bg-slate-200", className)}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(value)}
+    >
+      <div
+        className="h-full rounded-full bg-indigo-500 transition-all"
+        style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+      />
+    </div>
+  );
+}
+
+export function StatDisplay({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: React.ReactNode;
+  suffix?: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-1 text-sm sm:grid-cols-1">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-right font-medium text-slate-800 sm:text-left">
+        {value}
+        {suffix ? <span className="ml-1 text-xs text-slate-400">{suffix}</span> : null}
+      </span>
+    </div>
+  );
+}

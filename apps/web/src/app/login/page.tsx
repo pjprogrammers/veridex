@@ -80,11 +80,19 @@ export default function LoginPage() {
           <p className="font-semibold text-slate-300">Synthetic demo logins</p>
           <p className="mt-1">
             Admin: <span className="font-mono">admin</span> /{" "}
-            <span className="font-mono">Admin123!</span>
+            <span className="font-mono">VeridexDev123!</span>
           </p>
           <p>
             Officer: <span className="font-mono">officer1</span> /{" "}
-            <span className="font-mono">Officer123!</span>
+            <span className="font-mono">OfficerDev123!</span>
+          </p>
+          <p>
+            Supervisor: <span className="font-mono">supervisor1</span> /{" "}
+            <span className="font-mono">SupervisorDev123!</span>
+          </p>
+          <p>
+            Auditor: <span className="font-mono">auditor1</span> /{" "}
+            <span className="font-mono">AuditorDev123!</span>
           </p>
         </div>
       </div>

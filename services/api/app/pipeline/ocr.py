@@ -25,6 +25,24 @@ class OCRResult:
     engine: str = ""
 
 
+@dataclass
+class OCRExtractionResult:
+    """Structured OCR output with extracted fields, raw text, and timing."""
+
+    fields: list[dict] = field(default_factory=list)  # [{field_name, value, confidence, bbox}]
+    raw_text: str = ""
+    processing_time_ms: int = 0
+    engine: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "fields": self.fields,
+            "raw_text": self.raw_text,
+            "processing_time_ms": self.processing_time_ms,
+            "engine": self.engine,
+        }
+
+
 class BaseOCREngine(ABC):
     """Interface all OCR engines implement."""
 
@@ -63,7 +81,10 @@ def _load_paddle_engine():
     the dedicated AI image, so it is deferred until actually requested."""
     from app.pipeline.ocr_paddle import PaddleOCREngine
 
-    return PaddleOCREngine()
+    return PaddleOCREngine(
+        timeout=float(settings.OCR_TIMEOUT_SECONDS),
+        max_retries=settings.OCR_MAX_RETRIES,
+    )
 
 
 def get_ocr_engine() -> BaseOCREngine:

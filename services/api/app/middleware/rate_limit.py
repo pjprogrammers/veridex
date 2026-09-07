@@ -9,12 +9,21 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+_instances: list["RateLimitMiddleware"] = []
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, limit: int | None = None):
         super().__init__(app)
         self.limit = limit or settings.RATE_LIMIT_PER_MINUTE
         self.requests: dict[str, deque] = defaultdict(deque)
+        _instances.append(self)
+
+    @classmethod
+    def reset(cls) -> None:
+        """Clear the in-memory request window (used by tests)."""
+        for m in _instances:
+            m.requests.clear()
 
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host if request.client else "unknown"

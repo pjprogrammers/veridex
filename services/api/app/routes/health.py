@@ -1,25 +1,40 @@
-"""VERIDEX API - Health Check Routes"""
+"""VERIDEX API - Health & Readiness Routes"""
 from datetime import datetime
 
-import asyncpg
 from fastapi import APIRouter
 
 from app.core.config import get_settings
 from app.schemas.schemas import HealthStatus
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(tags=["health"])
 settings = get_settings()
 
 VERSION = "0.1.0"
 
 
-@router.get("", response_model=HealthStatus)
+@router.get("/health", response_model=HealthStatus)
 async def health_check():
-    """Check health of the API and its dependencies."""
-    services = {}
+    """Liveness: is the API process alive and able to serve requests."""
+    return HealthStatus(
+        status="ok",
+        version=VERSION,
+        services={"api": "ok"},
+        timestamp=datetime.utcnow(),
+    )
 
-    # PostgreSQL check
+
+@router.get("/ready", response_model=HealthStatus)
+async def readiness_check():
+    """Readiness: are all backing dependencies reachable.
+
+    Checks PostgreSQL, Redis, and MinIO.  A degraded status means at
+    least one dependency is unreachable but the API is still serving.
+    """
+    services: dict[str, str] = {}
+
+    # PostgreSQL
     try:
+        import asyncpg
         conn = await asyncpg.connect(
             host=settings.POSTGRES_HOST,
             port=settings.POSTGRES_PORT,
@@ -32,7 +47,7 @@ async def health_check():
     except Exception:
         services["postgres"] = "error"
 
-    # Redis check
+    # Redis
     try:
         import redis
         r = redis.Redis(
@@ -46,7 +61,7 @@ async def health_check():
     except Exception:
         services["redis"] = "error"
 
-    # MinIO check
+    # MinIO
     try:
         from app.core.storage import get_minio_client
         client = get_minio_client()

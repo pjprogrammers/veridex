@@ -143,3 +143,196 @@ export interface HealthStatus {
   services: Record<string, "ok" | "error">;
   timestamp: string;
 }
+
+// ---------------------------------------------------------------------------
+// Officer console / verification pipeline types
+// ---------------------------------------------------------------------------
+
+/**
+ * Verified document types reported by the backend pipeline.
+ */
+export type DocumentType =
+  | "passport"
+  | "national_id"
+  | "drivers_license"
+  | "residence_permit"
+  | "travel_document"
+  | "unknown"
+  | string;
+
+/**
+ * Processing lifecycle of a verification document.
+ */
+export type ProcessingStage =
+  | "UPLOADED"
+  | "CLASSIFYING"
+  | "PREPROCESSING"
+  | "EXTRACTING"
+  | "VALIDATING"
+  | "FORENSIC_ANALYSIS"
+  | "FACE_VERIFICATION"
+  | "RISK_ASSESSMENT"
+  | "COMPLETED"
+  | "FAILED";
+
+export const PROCESSING_LABELS: Record<ProcessingStage, string> = {
+  UPLOADED: "Document uploaded",
+  CLASSIFYING: "Classifying document",
+  PREPROCESSING: "Preprocessing image",
+  EXTRACTING: "Extracting fields",
+  VALIDATING: "Validating fields",
+  FORENSIC_ANALYSIS: "Forensic analysis",
+  FACE_VERIFICATION: "Face verification",
+  RISK_ASSESSMENT: "Assessing risk",
+  COMPLETED: "Complete",
+  FAILED: "Failed",
+};
+
+/** Decision surfaced to the officer from a verification result. */
+export type Verdict =
+  | "CLEAR"
+  | "MANUAL_REVIEW"
+  | "HIGH_RISK_ALERT"
+  | "INCONCLUSIVE";
+
+export interface VerificationDecision {
+  verdict: Verdict;
+  level: RiskLevel;
+  score: number;
+}
+
+export interface VerificationReport {
+  document_id: string;
+  document_type: string | null;
+  quality: { overall_score?: number } | Record<string, unknown> | null;
+  extracted_fields: Record<string, unknown> | null;
+  mrz: Record<string, unknown> | null;
+  ocr_confidence: number | null;
+  field_validation: Record<string, unknown> | null;
+  cross_validation: Record<string, unknown> | null;
+  forensics: Record<string, unknown> | null;
+  face: Record<string, unknown> | null;
+  registry: Record<string, unknown> | null;
+  risk: {
+    score: number;
+    level: RiskLevel;
+    factors: Array<{ label?: string; detail?: string; [k: string]: unknown }>;
+    explanation: string;
+    recommendations?: string[];
+  };
+  recommendation?: string;
+  disclaimer?: string;
+}
+
+export interface VerificationSummary {
+  document_id: string;
+  document_type: string | null;
+  ocr_confidence: number | null;
+  risk: RiskAssessment;
+  forensics: Record<string, unknown> | null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Document classification types
+// ---------------------------------------------------------------------------
+
+export interface ClassificationResult {
+  document_type: string;
+  confidence: number;
+  method: string;
+  template_id: string | null;
+  warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — OCR extraction types
+// ---------------------------------------------------------------------------
+
+export interface OCRExtractedField {
+  field_name: string;
+  value: string;
+  confidence: number;
+  bbox: number[][][];
+}
+
+export interface OCRExtractionResult {
+  fields: OCRExtractedField[];
+  raw_text: string;
+  processing_time_ms: number;
+  engine: string;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — MRZ extraction types
+// ---------------------------------------------------------------------------
+
+export type MRZCheckDigitState = boolean | null;
+
+export interface MRZExtractionResult {
+  mrz_detected: boolean;
+  mrz_valid: boolean;
+  check_digits: Record<string, MRZCheckDigitState>;
+  parsed_fields: Record<string, string>;
+  raw_mrz: string[];
+  warnings: string[];
+}
+
+export interface MRZFieldComparison {
+  field_name: string;
+  visual_value: string;
+  mrz_value: string;
+  verdict: "MATCH" | "MISMATCH" | "UNAVAILABLE";
+}
+
+export interface MRZComparisonResult {
+  comparisons: MRZFieldComparison[];
+  severity_score: number;
+  severity: "NONE" | "LOW" | "MEDIUM" | "HIGH";
+  severity_reasons: string[];
+}
+
+export interface MRZExtractionResponse {
+  document_id: string;
+  document_type: string | null;
+  mrz: MRZExtractionResult;
+  visual_fields: Record<string, string>;
+  comparison: MRZComparisonResult | null;
+}
+
+export type ForensicSeverity = "LOW" | "MEDIUM" | "HIGH";
+export type ForensicLevel = "NONE" | "LOW" | "MEDIUM" | "HIGH";
+export type ForensicStatus = "sufficient_evidence" | "insufficient_evidence";
+
+export interface ForensicDetectorResult {
+  detector_id: string;
+  detector_name: string;
+  score: number;
+  severity: ForensicSeverity;
+  description: string;
+  evidence: Record<string, unknown>;
+  regions: Array<Record<string, unknown>>;
+  artifacts?: Record<string, unknown>;
+  detector_status?: string;
+}
+
+export interface ForensicRegion {
+  detector_id?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  reason?: string;
+}
+
+export interface ForensicResult {
+  document_id: string;
+  forensic_status: ForensicStatus;
+  tampering_score: number | null;
+  level: ForensicLevel;
+  explanation: string;
+  weights: Record<string, number>;
+  components: Array<{ detector_id: string; score: number; weight: number }>;
+  regions: ForensicRegion[];
+  detectors: ForensicDetectorResult[];
+  artifact_keys: Record<string, string>;
+}

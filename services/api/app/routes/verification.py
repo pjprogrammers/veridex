@@ -53,9 +53,12 @@ async def analyze_forensics(
     result = run_forensics(image)
 
     doc.forensic_data = {  # type: ignore[assignment]
+        "forensic_status": result["forensic_status"],
+        "tampering_score": result["tampering_score"],
         "overall_score": result["overall_score"],
         "summary": result["summary"],
         "flags": result["flags"],
+        "evidence_note": result.get("evidence_note"),
     }
     await db.commit()
 
@@ -100,6 +103,29 @@ async def analyze_face(
         face_engine=get_face_engine(),
     )
     return {"document_id": document_id, "face": face_result}
+
+
+@router.get("/{document_id}/report", response_model=dict)
+async def get_verification_report(
+    document_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the stored verification report for a document without re-running
+    the pipeline.
+
+    Returns ``{"verified": false}`` when no report has been produced yet, so a
+    client can prompt the officer to run verification instead of recomputing.
+    """
+    doc = await _get_document(db, document_id)
+    stored = doc.verification_data if isinstance(doc.verification_data, dict) else None
+    if not stored:
+        return {"document_id": str(doc.id), "verified": False}
+    return {
+        "document_id": str(doc.id),
+        "verified": True,
+        "verification": stored,
+    }
 
 
 @router.post("/{document_id}/full", response_model=dict)

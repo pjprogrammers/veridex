@@ -1,0 +1,68 @@
+document_type: passport
+fields:
+  full_name:
+    labels:
+      - "FULL NAME"
+      - "NAME OF HOLDER"
+      - "HOLDER"
+      - "NAME"
+    position: same_row_or_below
+    max_words: 4
+    normalize: uppercase
+  passport_number:
+    labels:
+      - "PASSPORT NO"
+      - "PASSPORTNO"
+      - "DOCUMENT NO"
+      - "DOCUMENTNO"
+    position: same_row_or_below
+    max_words: 1
+    normalize: alphanumeric_uppercase
+  nationality:
+    labels:
+      - "NATIONALITY"
+      - "NAT"
+    position: same_row_or_below
+    max_words: 1
+    normalize: uppercase_3char
+  date_of_birth:
+    labels:
+      - "DATE OF BIRTH"
+      - "DATEOFBIRTH"
+      - "DOB"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  sex:
+    labels:
+      - "SEX"
+      - "GENDER"
+    position: same_row_or_below
+    max_words: 1
+    normalize: uppercase
+    allowed_values: ["M", "F", "X"]
+  date_of_issue:
+    labels:
+      - "DATE OF ISSUE"
+      - "DATEOFISSUE"
+      - "ISSUE DATE"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  date_of_expiry:
+    labels:
+      - "DATE OF EXPIRY"
+      - "DATEOFEXPIRY"
+      - "VALID UNTIL"
+      - "EXPIRY DATE"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  place_of_birth:
+    labels:
+      - "PLACE OF BIRTH"
+      - "PLACEOFBIRTH"
+      - "BIRTHPLACE"
+    position: same_row_or_below
+    max_words: 3
+    normalize: raw

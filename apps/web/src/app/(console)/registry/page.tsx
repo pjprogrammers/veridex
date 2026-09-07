@@ -26,7 +26,11 @@ import { formatDate } from "@/lib/utils";
 function statusTone(status: string): string {
   if (status === "valid")
     return "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
-  if (status === "reported_stolen" || status === "blacklisted" || status === "suspended")
+  if (
+    status === "reported_stolen" ||
+    status === "blacklisted" ||
+    status === "suspended"
+  )
     return "bg-red-50 text-red-700 ring-red-600/20";
   return "bg-amber-50 text-amber-700 ring-amber-600/20";
 }
@@ -109,16 +113,19 @@ export default function RegistryPage() {
           registry_type: createForm.registry_type,
           document_number: createForm.document_number.trim(),
           status: createForm.status,
-          ...(createForm.holder_name
-            ? { holder_name: createForm.holder_name }
-            : {}),
+          ...(createForm.holder_name ? { holder_name: createForm.holder_name } : {}),
           ...(createForm.issuing_country
             ? { issuing_country: createForm.issuing_country }
             : {}),
         },
       });
       setCreateOpen(false);
-      setCreateForm((f) => ({ ...f, document_number: "", holder_name: "", issuing_country: "" }));
+      setCreateForm((f) => ({
+        ...f,
+        document_number: "",
+        holder_name: "",
+        issuing_country: "",
+      }));
       await load();
     } catch (err) {
       setError(errorFn(err));
@@ -129,7 +136,7 @@ export default function RegistryPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Registry</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -149,7 +156,7 @@ export default function RegistryPage() {
           subtitle="Check a document number against registered statuses"
         />
         <form onSubmit={doLookup} className="flex flex-wrap items-end gap-3 p-4">
-          <div className="flex-1 min-w-56">
+          <div className="min-w-56 flex-1">
             <Label>Document number</Label>
             <Input
               placeholder="e.g. AB123456X"
@@ -185,18 +192,11 @@ export default function RegistryPage() {
                     <span className="text-xs text-slate-500">
                       {entry.holder_name ?? "no holder"}
                     </span>
-                    {entry.issuing_country ? (
-                      <span className="text-xs text-slate-500">
-                        {entry.issuing_country}
-                      </span>
-                    ) : null}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-600">
-                {lookupResult.message}
-              </div>
+              <div className="text-sm text-slate-600">{lookupResult.message}</div>
             )}
           </div>
         ) : null}
@@ -207,18 +207,18 @@ export default function RegistryPage() {
           title="Registry entries"
           subtitle={`${entries?.length ?? 0} listed`}
           action={
-          <Select
-            className="h-9 w-44 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All statuses</option>
-            {REGISTRY_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
+            <Select
+              className="h-9 w-44 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              {REGISTRY_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </Select>
           }
         />
         {!entries ? (
@@ -230,46 +230,54 @@ export default function RegistryPage() {
           <div className="p-5">
             <EmptyState
               title="No registry entries"
-              hint={isAdmin ? "Add an entry to seed the synthetic registry." : "Ask an admin to seed entries."}
+              hint={
+                isAdmin
+                  ? "Add an entry to seed the synthetic registry."
+                  : "Ask an admin to seed entries."
+              }
             />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs text-slate-500">
-                <th className="px-5 py-3 font-medium">Type</th>
-                <th className="px-5 py-3 font-medium">Document number</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Holder</th>
-                <th className="px-5 py-3 font-medium">Country</th>
-                <th className="px-5 py-3 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {entries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 text-slate-700">{entry.registry_type}</td>
-                  <td className="px-5 py-3 font-mono text-slate-900">
-                    {entry.document_number}
-                  </td>
-                  <td className="px-5 py-3">
-                    <Badge className={statusTone(entry.status)}>
-                      {entry.status}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {entry.holder_name ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {entry.issuing_country ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-xs text-slate-400">
-                    {formatDate(entry.created_at)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs text-slate-500">
+                  <th className="px-5 py-3 font-medium">Type</th>
+                  <th className="px-5 py-3 font-medium">Document number</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Holder</th>
+                  <th className="px-5 py-3 font-medium">Country</th>
+                  <th className="px-5 py-3 font-medium">Created</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {entries.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-3 text-slate-700">
+                      {entry.registry_type}
+                    </td>
+                    <td className="px-5 py-3 font-mono text-slate-900">
+                      {entry.document_number}
+                    </td>
+                    <td className="px-5 py-3">
+                      <Badge className={statusTone(entry.status)}>
+                        {entry.status}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {entry.holder_name ?? "—"}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {entry.issuing_country ?? "—"}
+                    </td>
+                    <td className="px-5 py-3 text-xs text-slate-400">
+                      {formatDate(entry.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
@@ -337,20 +345,6 @@ export default function RegistryPage() {
                   value={createForm.holder_name}
                   onChange={(e) =>
                     setCreateForm((f) => ({ ...f, holder_name: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Issuing country (optional, ISO-2)</Label>
-                <Input
-                  maxLength={2}
-                  placeholder="IN"
-                  value={createForm.issuing_country}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({
-                      ...f,
-                      issuing_country: e.target.value.toUpperCase(),
-                    }))
                   }
                 />
               </div>

@@ -22,6 +22,12 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Reset the global rate limiter between tests so the full suite does not
+    # trip the per-minute request budget.
+    from app.middleware.rate_limit import RateLimitMiddleware
+
+    RateLimitMiddleware.reset()
+
     TestingSession = async_sessionmaker(engine, expire_on_commit=False)
     async with TestingSession() as session:
         yield session

@@ -1,166 +1,181 @@
-"""MRZ parsing and check-digit validation.
+"""ICAO 9303 MRZ parsing and check-digit validation (TD3 passports).
 
-Parses the Machine Readable Zone (TD1/TD2/TD3) of travel documents and
-validates the mandatory check digits. Uses the `mrz` library when available,
-with an internal fallback for check-digit computation.
+Implements the field layout and ICAO check-digit algorithm for the TD3
+(Machine Readable Passport) zone: two lines of 44 characters. Includes
+per-field check-digit validation plus the composite final check digit.
 """
 from dataclasses import dataclass, field
 
 WEIGHTS = [7, 3, 1]
 
 
-def mrz_check_digit(chars: str) -> int:
-    """Compute the ICAO 9303 check digit for a character sequence.
+def _char_value(ch: str) -> int:
+    """ICAO 9303 value for a character: digits 0-9, letters A-Z (10-35), '<' 0."""
+    if ch == "<":
+        return 0
+    if ch.isdigit():
+        return int(ch)
+    if ch.isalpha():
+        return ord(ch.upper()) - ord("A") + 10
+    return 0
 
-    Values: 0-9 -> 0-9, A-Z -> 10-35, '<' -> 0.
-    Weighted sum: weight[i] = 7, 3, 1 repeating.
-    Returns the check digit (0-9).
-    """
+
+def mrz_check_digit(chars: str) -> int:
+    """Compute the ICAO 9303 check digit for a character sequence."""
     total = 0
     for i, ch in enumerate(chars):
-        if ch == "<":
-            value = 0
-        elif ch.isdigit():
-            value = int(ch)
-        elif ch.isalpha():
-            value = ord(ch.upper()) - ord("A") + 10
-        else:
-            value = 0
-        total += value * WEIGHTS[i % 3]
+        total += _char_value(ch) * WEIGHTS[i % 3]
     return total % 10
 
 
 def validate_mrz_checksum(field: str, check_digit_char: str) -> bool:
-    """Validate a single MRZ field against its check digit character."""
-    if len(check_digit_char) != 1:
+    """Validate a field against its check digit character."""
+    if len(check_digit_char) != 1 or not check_digit_char.isdigit():
         return False
-    expected = mrz_check_digit(field)
-    provided = int(check_digit_char) if check_digit_char.isdigit() else -1
-    return expected == provided
+    return mrz_check_digit(field) == int(check_digit_char)
 
 
 @dataclass
 class MRZResult:
-    """Parsed MRZ data with validation results."""
+    """Structured, fully-validated MRZ result."""
 
-    valid: bool = False
+    mrz_detected: bool = False
+    mrz_valid: bool = False
     format: str = ""
-    document_type: str = ""
-    document_number: str = ""
-    issuing_country: str = ""
-    nationality: str = ""
-    surname: str = ""
-    given_names: str = ""
-    date_of_birth: str = ""
-    sex: str = ""
-    expiry_date: str = ""
-    check_digits_valid: bool = False
-    errors: list[str] = field(default_factory=list)
-    raw_lines: list[str] = field(default_factory=list)
+    check_digits: dict = field(default_factory=dict)
+    parsed_fields: dict = field(default_factory=dict)
+    raw_mrz: list = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
-def _clean(line: str) -> str:
-    return line.upper()
+def _parse_name_block(block: str) -> tuple[str, str]:
+    """Split the name block on '<<' into (surname, given_names)."""
+    parts = block.split("<<")
+    surname = parts[0].replace("<", " ").strip() if parts else ""
+    given_names = parts[1].replace("<", " ").strip() if len(parts) > 1 else ""
+    return surname, given_names
 
 
 def parse_td3(lines: list[str]) -> MRZResult:
-    """Parse a TD3 (ICAO passport) MRZ: 2 lines of 44 characters."""
+    """Parse a TD3 passport MRZ (2 x 44 characters).
+
+    Returns an ``MRZResult`` with per-field check digits, parsed fields,
+    raw lines, and warnings. A ``mrz_valid`` of ``True`` requires all
+    present check digits to be correct.
+    """
     if len(lines) != 2 or len(lines[0]) != 44 or len(lines[1]) != 44:
-        return MRZResult(valid=False, errors=["TD3 requires 2x44 char lines"])
+        return MRZResult(
+            mrz_detected=False,
+            warnings=["td3_length_mismatch"],
+        )
 
-    line1 = _clean(lines[0])
-    line2 = _clean(lines[1])
+    line1 = lines[0].upper()
+    line2 = lines[1].upper()
 
-    result = MRZResult(format="TD3", valid=True)
-    result.document_type = line1[0:2].replace("<", "")
-    result.issuing_country = line1[2:5]
-    result.surname = line1[5:44].split("<")[0].replace("<", " ")
-    names = line1[5:44].split("<<")
-    if len(names) > 1:
-        result.surname = names[0].replace("<", " ").strip()
-        result.given_names = names[1].replace("<", " ").strip()
+    # --- Line 1 ---
+    document_code = line1[0:2]
+    issuing_state = line1[2:5]
+    surname, given_names = _parse_name_block(line1[5:44])
 
-    result.document_number = line2[0:9]
-    result.nationality = line2[10:13]
-    result.date_of_birth = line2[13:19]
-    result.sex = line2[20]
-    result.expiry_date = line2[21:27]
-    result.raw_lines = [line1, line2]
+    # --- Line 2 ---
+    passport_number = line2[0:9]
+    def _cd(idx: int) -> str:
+        return line2[idx]
 
-    # Validate check digits
-    checks = [
-        ("document_number", result.document_number, line2[9]),
-        ("date_of_birth", result.date_of_birth, line2[19]),
-        ("expiry_date", result.expiry_date, line2[27]),
-    ]
-    all_valid = True
-    for check_name, field_value, digit in checks:
-        if not validate_mrz_checksum(field_value, digit):
-            all_valid = False
-            result.errors.append(f"check_digit_mismatch:{check_name}")
-    result.check_digits_valid = all_valid
-    return result
+    passport_number_check_digit = _cd(9)
+    nationality = line2[10:13]
+    date_of_birth = line2[13:19]
+    date_of_birth_check_digit = _cd(19)
+    sex = line2[20]
+    expiry_date = line2[21:27]
+    expiry_date_check_digit = _cd(27)
+    personal_number = line2[28:36]
+    personal_number_check_digit = _cd(36)
+    optional_data = line2[37:42]
+    final_check_digit = _cd(42)
 
+    # --- Per-field validation ---
+    checks = {
+        "passport_number": validate_mrz_checksum(passport_number, passport_number_check_digit),
+        "date_of_birth": validate_mrz_checksum(date_of_birth, date_of_birth_check_digit),
+        "expiry_date": validate_mrz_checksum(expiry_date, expiry_date_check_digit),
+        # Personal number check is optional (encoded as '<' when absent).
+        "personal_number": (
+            None
+            if personal_number_check_digit == "<"
+            else validate_mrz_checksum(personal_number, personal_number_check_digit)
+        ),
+    }
 
-def parse_td1(lines: list[str]) -> MRZResult:
-    """Parse a TD1 (ID card) MRZ: 3 lines of 30 characters."""
-    if len(lines) != 3 or any(len(line) != 30 for line in lines):
-        return MRZResult(valid=False, errors=["TD1 requires 3x30 char lines"])
+    # Composite final check digit: covers line2 positions 2:42
+    # (from passport_number through optional_data).
+    composite = line2[2:42]
+    checks["final"] = validate_mrz_checksum(composite, final_check_digit)
 
-    mrz_line1 = _clean(lines[0])
-    mrz_line2 = _clean(lines[1])
-    mrz_line3 = _clean(lines[2])
+    warnings: list[str] = []
 
-    result = MRZResult(format="TD1", valid=True)
-    result.document_type = mrz_line1[0:2].replace("<", "")
-    result.issuing_country = mrz_line1[2:5]
-    result.document_number = mrz_line1[5:14]
-    result.date_of_birth = mrz_line2[0:6]
-    result.sex = mrz_line2[7]
-    result.expiry_date = mrz_line2[8:14]
-    result.nationality = mrz_line2[15:18]
+    # Validate the date fields conform to YYMMDD.
+    import re
 
-    names = mrz_line3.split("<<")
-    if len(names) > 1:
-        result.surname = names[0].replace("<", " ").strip()
-        result.given_names = names[1].replace("<", " ").strip()
+    if not re.fullmatch(r"\d{6}", date_of_birth):
+        warnings.append("invalid_date_of_birth_format")
+    if not re.fullmatch(r"\d{6}", expiry_date):
+        warnings.append("invalid_expiry_date_format")
 
-    result.raw_lines = [mrz_line1, mrz_line2, mrz_line3]
+    # document code should begin with 'P' for a passport.
+    if not document_code.startswith("P"):
+        warnings.append("non_passport_document_code")
 
-    checks = [
-        ("document_number", result.document_number, mrz_line1[14]),
-        ("date_of_birth", result.date_of_birth, mrz_line2[6]),
-        ("expiry_date", result.expiry_date, mrz_line2[14]),
-    ]
-    all_valid = True
-    for check_name, field_value, digit in checks:
-        if not validate_mrz_checksum(field_value, digit):
-            all_valid = False
-            result.errors.append(f"check_digit_mismatch:{check_name}")
-    result.check_digits_valid = all_valid
-    return result
+    def _all_valid(checks_dict: dict) -> bool:
+        return all(v is not False for v in checks_dict.values())
 
+    all_valid = _all_valid(checks)
 
-def parse_mrz(lines: list[str]) -> MRZResult:
-    """Parse MRZ lines, auto-detecting format (TD1 vs TD3)."""
-    cleaned = [_clean(line) for line in lines if line.strip()]
-    if not cleaned:
-        return MRZResult(valid=False, errors=["empty_mrz"])
+    parsed = {
+        "document_code": document_code,
+        "issuing_state": issuing_state,
+        "surname": surname,
+        "given_names": given_names,
+        "passport_number": passport_number,
+        "passport_number_check_digit": passport_number_check_digit,
+        "nationality": nationality,
+        "date_of_birth": date_of_birth,
+        "date_of_birth_check_digit": date_of_birth_check_digit,
+        "sex": sex,
+        "expiry_date": expiry_date,
+        "expiry_date_check_digit": expiry_date_check_digit,
+        "personal_number": personal_number,
+        "personal_number_check_digit": personal_number_check_digit,
+        "optional_data": optional_data,
+        "final_check_digit": final_check_digit,
+    }
 
-    if len(cleaned) == 2 and len(cleaned[0]) == 44 and len(cleaned[1]) == 44:
-        return parse_td3(cleaned)
-    if len(cleaned) == 3 and all(len(line) == 30 for line in cleaned):
-        return parse_td1(cleaned)
     return MRZResult(
-        valid=False,
-        errors=["unrecognized_mrz_format"],
-        raw_lines=cleaned,
+        mrz_detected=True,
+        mrz_valid=all_valid,
+        format="TD3",
+        check_digits=checks,
+        parsed_fields=parsed,
+        raw_mrz=[line1, line2],
+        warnings=warnings,
     )
 
 
-# Optional: use the `mrz` library when available for robust parsing.
-try:
+def parse_mrz(lines: list[str]) -> MRZResult:
+    """Parse MRZ lines, auto-detecting the TD3 format.
 
-    MRZ_LIB_AVAILABLE = True
-except Exception:  # pragma: no cover - import guard
-    MRZ_LIB_AVAILABLE = False
+    Currently only TD3 (2 x 44) is implemented. Pass through to the TD3
+    parser; other formats report as not detected.
+    """
+    cleaned = [line.upper() for line in lines if line.strip()]
+    if not cleaned:
+        return MRZResult(mrz_detected=False, warnings=["empty_mrz"])
+
+    if len(cleaned) == 2 and len(cleaned[0]) == 44 and len(cleaned[1]) == 44:
+        return parse_td3(cleaned)
+
+    return MRZResult(
+        mrz_detected=False,
+        warnings=["unrecognized_mrz_format"],
+        raw_mrz=cleaned,
+    )

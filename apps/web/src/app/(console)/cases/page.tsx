@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ScanLine } from "lucide-react";
 import { api, errorFn, withQuery } from "@/lib/api";
 import type { CaseListResponse, CaseRecord, NewCaseInput, RiskLevel } from "@/lib/types";
 import { RiskBadge } from "@/components/risk";
@@ -84,7 +85,7 @@ export default function CasesPage() {
         verify_face_against: form.verify_face_against || undefined,
       };
       const res = await api<CaseRecord>("/cases", { method: "POST", json: payload });
-      router.push(`/dashboard/cases/${res.id}`);
+      router.push(`/cases/${res.id}`);
     } catch (e) {
       setError(errorFn(e));
     } finally {
@@ -96,14 +97,20 @@ export default function CasesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Cases</h1>
           <p className="mt-1 text-sm text-slate-500">
             Verification cases opened at the checkpoint.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>New case</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => router.push("/verify")}>
+            <ScanLine className="h-4 w-4" aria-hidden />
+            New Verification
+          </Button>
+          <Button onClick={() => setCreating(true)}>New case</Button>
+        </div>
       </div>
 
       {error ? <Alert title="Request failed">{error}</Alert> : null}
@@ -162,54 +169,65 @@ export default function CasesPage() {
           <div className="p-5">
             <EmptyState
               title="No cases match"
-              hint="Adjust the filters or create a new case."
+              hint="Adjust the filters or start a new verification."
             />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs text-slate-500">
-                <th className="px-5 py-3 font-medium">Case</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Risk</th>
-                <th className="px-5 py-3 font-medium">Created</th>
-                <th className="px-5 py-3 text-right font-medium">Open</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {cases.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3">
-                    <div className="font-medium text-slate-900">
-                      {c.case_number}
-                    </div>
-                    <div className="max-w-xs truncate text-xs text-slate-500">
-                      {c.description || "—"}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <Badge className={STATUS_STYLES[c.status]}>
-                      {STATUS_LABELS[c.status]}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3">
-                    <RiskBadge level={c.risk_level} />
-                  </td>
-                  <td className="px-5 py-3 text-xs text-slate-500">
-                    {formatDate(c.created_at)}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/dashboard/cases/${c.id}`}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
-                    >
-                      View →
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs text-slate-500">
+                  <th className="px-5 py-3 font-medium">Case</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Risk</th>
+                  <th className="px-5 py-3 font-medium">Created</th>
+                  <th className="px-5 py-3 font-medium">Forensics</th>
+                  <th className="px-5 py-3 text-right font-medium">Open</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {cases.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-3">
+                      <div className="font-medium text-slate-900">
+                        {c.case_number}
+                      </div>
+                      <div className="max-w-xs truncate text-xs text-slate-500">
+                        {c.description || "—"}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <Badge className={STATUS_STYLES[c.status]}>
+                        {STATUS_LABELS[c.status]}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3">
+                      <RiskBadge level={c.risk_level} />
+                    </td>
+                    <td className="px-5 py-3 text-xs text-slate-500">
+                      {formatDate(c.created_at)}
+                    </td>
+                    <td className="px-5 py-3 text-xs">
+                      <Link
+                        href={`/cases/${c.id}/forensics`}
+                        className="font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        Forensics →
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Link
+                        href={`/cases/${c.id}`}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
           <span className="text-xs text-slate-500">

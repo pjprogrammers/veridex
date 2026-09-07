@@ -132,9 +132,10 @@ async def verify_document(
         "disclaimer": DISCLAIMER,
     }
 
-    # Persist forensic + face data onto the record
+    # Persist forensic + face data and the full report onto the record
     document.forensic_data = _safe_forensic_payload(forensics)  # type: ignore[assignment]
     document.extracted_fields = document_analysis.extracted_fields  # type: ignore[assignment]
+    document.verification_data = result  # type: ignore[assignment]
     await db.commit()
 
     logger.info(
@@ -147,8 +148,14 @@ async def verify_document(
 
 
 def _safe_forensic_payload(forensics: dict) -> dict:
-    """Strip high-cardinality/full arrays to keep the stored payload lean."""
+    """Strip high-cardinality/full arrays to keep the stored payload lean.
+
+    Preserves the evidence status so consumers know experimental signals are
+    not production-grade evidence.
+    """
     return {
+        "forensic_status": forensics.get("forensic_status", "insufficient_evidence"),
+        "tampering_score": forensics.get("tampering_score"),
         "overall_score": forensics.get("overall_score"),
         "summary": forensics.get("summary"),
         "flags": forensics.get("flags"),

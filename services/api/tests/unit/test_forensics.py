@@ -55,9 +55,16 @@ def test_edge_density_anomaly():
 def test_run_forensics_structure():
     img = _make_image()
     result = run_forensics(img)
+    # Evidence-integrity fields
+    assert result["forensic_status"] == "insufficient_evidence"
+    assert result["tampering_score"] is None
+    # Research/visualization fields (experimental, not production evidence)
     assert "overall_score" in result
     assert 0.0 <= result["overall_score"] <= 1.0
     assert len(result["flags"]) == 4
     for flag in result["flags"]:
         assert flag["severity"] in {"LOW", "MEDIUM", "HIGH"}
     assert "summary" in result
+    # Evidence note must be present to clarify experimental status
+    assert result["evidence_note"]
+    assert "experimental" in result["evidence_note"].lower()

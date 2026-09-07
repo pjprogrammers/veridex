@@ -1,0 +1,66 @@
+document_type: visa
+fields:
+  visa_number:
+    labels:
+      - "VISA NO"
+      - "VISA NO."
+      - "VISA NUMBER"
+      - "VISA NUMBER"
+    position: same_row_or_below
+    max_words: 1
+    normalize: alphanumeric_uppercase
+  name:
+    labels:
+      - "NAME"
+      - "SURNAME"
+      - "FULL NAME"
+    position: same_row_or_below
+    max_words: 4
+    normalize: uppercase
+  passport_number:
+    labels:
+      - "PASSPORT NO"
+      - "PASSPORTNO"
+      - "TRAVEL DOCUMENT NO"
+    position: same_row_or_below
+    max_words: 1
+    normalize: alphanumeric_uppercase
+  nationality:
+    labels:
+      - "NATIONALITY"
+      - "CITIZEN OF"
+    position: same_row_or_below
+    max_words: 1
+    normalize: uppercase_3char
+  date_of_birth:
+    labels:
+      - "DATE OF BIRTH"
+      - "DATEOFBIRTH"
+      - "DOB"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  valid_from:
+    labels:
+      - "VALID FROM"
+      - "DATE OF ISSUE"
+      - "DATEOFISSUE"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  valid_until:
+    labels:
+      - "VALID UNTIL"
+      - "DATE OF EXPIRY"
+      - "DATEOFEXPIRY"
+      - "EXPIRY DATE"
+    position: same_row_or_below
+    max_words: 1
+    normalize: date_to_yymmdd
+  visa_type:
+    labels:
+      - "VISA TYPE"
+      - "TYPE"
+    position: same_row_or_below
+    max_words: 2
+    normalize: uppercase

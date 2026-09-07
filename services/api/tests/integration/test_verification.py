@@ -39,6 +39,9 @@ def test_full_verification_pipeline_structure():
     # Forensics
     assert 0.0 <= forensics["overall_score"] <= 1.0
     assert len(forensics["flags"]) == 4
+    # Evidence-integrity: synthetic doc has no production/conditional evidence.
+    assert forensics["forensic_status"] == "insufficient_evidence"
+    assert forensics["tampering_score"] is None
 
     # Face
     assert face["portrait"]["portrait"] is not None

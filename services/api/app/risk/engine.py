@@ -69,9 +69,12 @@ class RiskEngine:
 
         # --- MRZ validity ---
         mrz = (document_analysis or {}).get("mrz", {})
-        if mrz:
-            check = mrz.get("check_digits_valid")
-            if check is False:
+        if mrz and mrz.get("mrz_detected"):
+            if not mrz.get("mrz_valid"):
+                failed = [
+                    k for k, v in (mrz.get("check_digits") or {}).items()
+                    if v is False
+                ]
                 factors.append(
                     RiskFactor(
                         id="mrz_check_failed",
@@ -79,19 +82,19 @@ class RiskEngine:
                         weight=0.20,
                         score=0.85,
                         source="mrz",
-                        detail=",".join(mrz.get("errors", [])),
+                        detail=",".join(failed) if failed else "invalid_mrz",
                     )
                 )
-            if not mrz.get("valid"):
-                factors.append(
-                    RiskFactor(
-                        id="mrz_unreadable",
-                        label="MRZ could not be parsed",
-                        weight=0.12,
-                        score=0.5,
-                        source="mrz",
-                    )
+        elif mrz and not mrz.get("mrz_detected"):
+            factors.append(
+                RiskFactor(
+                    id="mrz_unreadable",
+                    label="MRZ could not be parsed",
+                    weight=0.12,
+                    score=0.5,
+                    source="mrz",
                 )
+            )
 
         # --- Field validation ---
         if validation:
@@ -167,28 +170,39 @@ class RiskEngine:
                     )
 
         # --- Forensics ---
+        # Experimental detector outputs are research/debugging signals only.
+        # They must NOT silently raise a production risk score. A forensics
+        # factor is added ONLY when the forensic subsystem reports
+        # sufficient_evidence (i.e. a production/conditional detector fired).
         if forensics:
-            f_score = forensics.get("overall_score", 0.0)
-            if f_score >= 0.5:
-                level_label = "strong"
-                weight = 0.30
-            elif f_score >= 0.25:
-                level_label = "some"
-                weight = 0.15
-            else:
-                level_label = "no"
-                weight = 0.0
-            if level_label != "no":
-                factors.append(
-                    RiskFactor(
-                        id="forensics",
-                        label=f"{level_label.capitalize()} potential manipulation indicators",
-                        weight=weight,
-                        score=min(1.0, f_score),
-                        source="forensics",
-                        detail=f"overall {f_score:.2f}",
+            f_status = forensics.get("forensic_status")
+            # "tampering_score" is the canonical production key produced by the
+            # modular engine; fall back to the legacy "overall_score" research
+            # aggregate for compatibility with the legacy verify payload.
+            f_score = forensics.get(
+                "tampering_score", forensics.get("overall_score", 0.0)
+            )
+            if f_status == "sufficient_evidence" and f_score is not None:
+                if f_score >= 0.5:
+                    level_label = "strong"
+                    weight = 0.30
+                elif f_score >= 0.25:
+                    level_label = "some"
+                    weight = 0.15
+                else:
+                    level_label = "no"
+                    weight = 0.0
+                if level_label != "no":
+                    factors.append(
+                        RiskFactor(
+                            id="forensics",
+                            label=f"{level_label.capitalize()} potential manipulation indicators",
+                            weight=weight,
+                            score=min(1.0, f_score),
+                            source="forensics",
+                            detail=f"overall {f_score:.2f}",
+                        )
                     )
-                )
 
         # --- Face verification ---
         if face:

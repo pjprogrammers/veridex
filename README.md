@@ -50,7 +50,8 @@ Frontend (Next.js) → API Gateway (FastAPI) → Verification Orchestrator
 - **AI/CV**: OpenCV, PaddleOCR, MRZ parsing, InsightFace, scikit-learn, NumPy
 - **Data**: PostgreSQL, Redis, MinIO (S3-compatible)
 - **Infrastructure**: Docker, Docker Compose
-- **Security**: JWT, RBAC, Argon2 hashing, SHA-256 audit chaining, rate limiting
+- **Security**: JWT, RBAC (`users → user_roles → roles`), Argon2 hashing, SHA-256 audit chaining, rate limiting, X-Request-ID correlation IDs
+- **RBAC roles**: `OFFICER`, `SUPERVISOR`, `ADMIN`, `AUDITOR`
 
 ## Quick Start
 
@@ -66,8 +67,10 @@ docker compose up --build
 ```
 
 Default credentials (synthetic only):
-- Admin: `admin` / `Admin123!`
-- Officer: `officer1` / `Officer123!`
+- Admin: `admin` / `VeridexDev123!`
+- Officer: `officer1` / `OfficerDev123!`
+- Supervisor: `supervisor1` / `SupervisorDev123!`
+- Auditor: `auditor1` / `AuditorDev123!`
 
 ## Standalone mode (no Docker)
 

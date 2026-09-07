@@ -172,7 +172,14 @@ def edge_density_anomaly(image: np.ndarray) -> dict:
 
 
 def run_forensics(image: np.ndarray) -> dict:
-    """Run all forensic signals and produce a combined assessment."""
+    """Run all forensic signals and produce a combined assessment.
+
+    All bundled signals (ELA, noise, copy-move, edge density) are experimental
+    heuristics. They are surfaced for research/debugging/visualization but are
+    NOT validated production evidence, so ``forensic_status`` is always
+    ``"insufficient_evidence"`` and ``tampering_score`` is ``None``:
+    experimental signals must not silently drive a production tampering score.
+    """
     signals = {
         "ela": ela_anomaly_score(image),
         "noise": noise_anomaly_score(image),
@@ -180,7 +187,8 @@ def run_forensics(image: np.ndarray) -> dict:
         "edge_density": edge_density_anomaly(image),
     }
 
-    # Weighted overall manipulation indicator (0-1).
+    # Weighted overall manipulation indicator (0-1). Research/visualization
+    # aggregate ONLY — never used as production evidence.
     weights = {"ela": 0.4, "noise": 0.25, "copy_move": 0.25, "edge_density": 0.1}
     overall = sum(signals[k]["score"] * weights[k] for k in weights)
 
@@ -195,10 +203,17 @@ def run_forensics(image: np.ndarray) -> dict:
     ]
 
     return {
+        "forensic_status": "insufficient_evidence",
+        "tampering_score": None,
         "overall_score": round(float(np.clip(overall, 0.0, 1.0)), 4),
         "signals": signals,
         "flags": flags,
         "summary": _summary(overall),
+        "evidence_note": (
+            "All forensic signals are experimental heuristics. They are not "
+            "validated production evidence and must not be treated as a "
+            "tampering verdict or authenticity determination."
+        ),
     }
 
 

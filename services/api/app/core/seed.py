@@ -1,7 +1,14 @@
 """VERIDEX API - Synthetic Data Seeding
 
-This module creates realistic-looking but entirely synthetic data
-for the prototype. No real personal data is used.
+Creates realistic-looking but entirely synthetic data for the prototype.
+No real personal data is used.
+
+Roles seeded (RBAC, authoritative via users -> user_roles -> roles):
+  OFFICER, SUPERVISOR, ADMIN, AUDITOR
+
+Development credentials (synthetic only):
+  admin@veridex.local  / VeridexDev123!
+  officer1@veridex.local / OfficerDev123!
 """
 import asyncio
 import random
@@ -12,18 +19,113 @@ from sqlalchemy import func, select
 
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.core.security import hash_password
-from app.models.models import RegistryEntry, User, VerificationCase
+from app.models.models import RegistryEntry, Role, User, VerificationCase, user_roles
 from app.services.audit import append_audit_entry
 
 logger = structlog.get_logger()
 
+# ---------------------------------------------------------------------------
+# RBAC role definitions (authoritative — roles table)
+# ---------------------------------------------------------------------------
+ROLE_DEFS: list[dict[str, str | list[str]]] = [
+    {
+        "name": "OFFICER",
+        "description": (
+            "Frontline border/checkpoint officer. Can create cases, "
+            "upload documents, and run verification."
+        ),
+        "permissions": [
+            "cases:read",
+            "cases:create",
+            "documents:upload",
+            "verification:run",
+            "registry:read",
+            "audit:read",
+        ],
+    },
+    {
+        "name": "SUPERVISOR",
+        "description": "Supervisory officer. Can review and override case statuses, view all audit trails.",
+        "permissions": [
+            "cases:read",
+            "cases:create",
+            "cases:override",
+            "documents:upload",
+            "verification:run",
+            "registry:read",
+            "audit:read",
+        ],
+    },
+    {
+        "name": "ADMIN",
+        "description": (
+            "System administrator. Full access to all features "
+            "including registry management and user administration."
+        ),
+        "permissions": [
+            "cases:read",
+            "cases:create",
+            "cases:delete",
+            "cases:override",
+            "documents:upload",
+            "verification:run",
+            "registry:read",
+            "registry:write",
+            "audit:read",
+            "users:admin",
+        ],
+    },
+    {
+        "name": "AUDITOR",
+        "description": "Read-only auditor. Can inspect cases, audit trails, and verify chain integrity.",
+        "permissions": [
+            "cases:read",
+            "registry:read",
+            "audit:read",
+        ],
+    },
+]
 
-FIRST_NAMES = ["Alex", "Jordan", "Morgan", "Casey", "Riley", "Taylor", "Jordan", "Avery", "Quinn", "Remy"]
+# Synthetic user definitions (development only)
+SEED_USERS = [
+    {
+        "username": "admin",
+        "email": "admin@veridex.local",
+        "password": "VeridexDev123!",
+        "full_name": "System Administrator",
+        "role": "admin",  # legacy string column
+        "rbac_role": "ADMIN",
+    },
+    {
+        "username": "officer1",
+        "email": "officer1@veridex.local",
+        "password": "OfficerDev123!",
+        "full_name": "Officer Sample",
+        "role": "officer",
+        "rbac_role": "OFFICER",
+    },
+    {
+        "username": "supervisor1",
+        "email": "supervisor1@veridex.local",
+        "password": "SupervisorDev123!",
+        "full_name": "Supervisor Sample",
+        "role": "officer",  # legacy column; RBAC is authoritative
+        "rbac_role": "SUPERVISOR",
+    },
+    {
+        "username": "auditor1",
+        "email": "auditor1@veridex.local",
+        "password": "AuditorDev123!",
+        "full_name": "Auditor Sample",
+        "role": "officer",
+        "rbac_role": "AUDITOR",
+    },
+]
+
+FIRST_NAMES = ["Alex", "Jordan", "Morgan", "Casey", "Riley", "Taylor", "Avery", "Quinn", "Remy"]
 LAST_NAMES = ["Doe", "Smith", "Johnson", "Chen", "Patel", "Kim", "Nakamura", "Garcia", "Silva", "Okafor"]
 COUNTRIES = ["US", "GB", "CA", "AU", "IN", "JP", "DE", "FR", "BR", "NG"]
 
-# Known document numbers referenced by scripts/synthetic_documents.py and the
-# frontend registry lookup demo. Kept stable so demo data lines up.
 KNOWN_DOCS = {
     "passport": {
         "number": "P12345678",
@@ -50,13 +152,67 @@ def _doc_number():
     return f"{random.choice('ABCDEFGHJKMNPQRSTUVWXYZ')}{random.randint(100000, 999999)}"
 
 
+async def _seed_roles(db) -> dict[str, Role]:
+    """Seed RBAC roles and return a name->Role mapping."""
+    existing = await db.execute(select(Role))
+    existing_names = {r.name for r in existing.scalars().all()}
+    role_map: dict[str, Role] = {}
+
+    for defn in ROLE_DEFS:
+        name = str(defn["name"])
+        if name in existing_names:
+            # Already seeded — fetch for the map
+            result = await db.execute(select(Role).where(Role.name == name))
+            role_map[name] = result.scalar_one()
+        else:
+            role = Role(
+                name=name,
+                description=str(defn["description"]),
+                permissions=list(defn["permissions"]),
+            )
+            db.add(role)
+            await db.flush()
+            role_map[name] = role
+            logger.info("role_created", role_name=name)
+
+    return role_map
+
+
+async def _seed_users(db, role_map: dict[str, Role]) -> None:
+    """Seed synthetic users and assign RBAC roles."""
+    existing = await db.execute(select(User.username))
+    existing_names = {u for (u,) in existing}
+
+    for spec in SEED_USERS:
+        if spec["username"] in existing_names:
+            continue
+        user = User(
+            username=spec["username"],
+            email=spec["email"],
+            hashed_password=hash_password(spec["password"]),
+            full_name=spec["full_name"],
+            role=spec["role"],
+        )
+        db.add(user)
+        await db.flush()
+        # Assign RBAC role via junction table
+        rbac_role = role_map.get(spec["rbac_role"])
+        if rbac_role:
+            await db.execute(
+                user_roles.insert().values(user_id=user.id, role_id=rbac_role.id)
+            )
+        logger.info("user_created", username=spec["username"], rbac_role=spec["rbac_role"])
+
+    existing_names_after = {u for (u,) in (await db.execute(select(User.username)))}
+    logger.info("users_seeded", total=len(existing_names_after))
+
+
 async def _seed_registry(db) -> None:
     count = await db.scalar(select(func.count()).select_from(RegistryEntry))
     if count and count > 0:
         return
 
     entries = []
-    # Known demo documents
     for entry in KNOWN_DOCS.values():
         entries.append(
             RegistryEntry(
@@ -67,7 +223,6 @@ async def _seed_registry(db) -> None:
                 issuing_country=entry["country"],
             )
         )
-    # Random synthetic entries
     for _ in range(200):
         entries.append(
             RegistryEntry(
@@ -146,40 +301,15 @@ async def _seed_demo_cases(db) -> None:
 
 async def seed_database():
     """Seed the database with synthetic data."""
-    # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as db:
-        # Seed admin user
-        existing = await db.execute(select(User).where(User.username == "admin"))
-        if not existing.scalar_one_or_none():
-            admin = User(
-                username="admin",
-                email="admin@synthetic.veridex.local",
-                hashed_password=hash_password("Admin123!"),
-                full_name="System Administrator",
-                role="admin",
-            )
-            officer = User(
-                username="officer1",
-                email="officer1@synthetic.veridex.local",
-                hashed_password=hash_password("Officer123!"),
-                full_name="Officer Sample",
-                role="officer",
-            )
-            db.add_all([admin, officer])
-            await db.flush()
-            logger.info("seeded_users")
-
+        role_map = await _seed_roles(db)
+        await _seed_users(db, role_map)
         await _seed_registry(db)
         await _seed_demo_cases(db)
         await db.commit()
-
-
-if __name__ == "__main__":
-    asyncio.run(seed_database())
-    print("Database seeded successfully.")
 
 
 if __name__ == "__main__":
