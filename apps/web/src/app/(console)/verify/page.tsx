@@ -3,13 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Ban,
+  CalendarX2,
   CheckCircle2,
   FileImage,
   FileScan,
+  FileWarning,
   Loader2,
   RefreshCw,
   ShieldCheck,
   Upload,
+  UserX,
   X,
   XCircle,
 } from "lucide-react";
@@ -39,6 +43,73 @@ import { PROCESSING_LABELS } from "@/lib/types";
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_SIZE_MB = 15;
 
+function withUniqueSuffix(bytes: ArrayBuffer): Blob {
+  const marker = new TextEncoder().encode(
+    `\u0000VERIDEX-DEMO-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+  return new Blob([bytes, marker], { type: "image/png" });
+}
+
+interface DemoScenario {
+  key: string;
+  label: string;
+  signal: string;
+  description: string;
+  docFile: string;
+  liveFaceFile?: string;
+  registry: boolean;
+  forensics: boolean;
+}
+
+const DEMO_SCENARIOS: DemoScenario[] = [
+  {
+    key: "genuine",
+    label: "Genuine",
+    signal: "expect CLEAR · low risk",
+    description: "Clean synthetic passport, valid MRZ, registry-clear.",
+    docFile: "genuine_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "tampered",
+    label: "Tampered",
+    signal: "expect forensic tamper signals",
+    description: "Same passport with an altered document area.",
+    docFile: "tampered_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "expired",
+    label: "Expired",
+    signal: "expect validation FAIL · expired",
+    description: "Passport whose date of expiry has passed.",
+    docFile: "expired_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "blacklisted",
+    label: "Blacklisted",
+    signal: "expect registry alert",
+    description: "Passport number flagged in the registry.",
+    docFile: "blacklisted_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "impersonation",
+    label: "Impersonation",
+    signal: "expect face mismatch",
+    description: "Document portrait vs a different live face.",
+    docFile: "genuine_passport.png",
+    liveFaceFile: "live_other.png",
+    registry: true,
+    forensics: true,
+  },
+];
+
 interface StageState {
   stage: ProcessingStage;
   state: "pending" | "active" | "done" | "error";
@@ -65,8 +136,11 @@ export default function VerifyPage() {
   const [stageStates, setStageStates] = useState<StageState[]>([]);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
+  const [selectedScenario, setSelectedScenario] = useState<DemoScenario | null>(
+    null,
+  );
+  const [scenarioLoading, setScenarioLoading] = useState(false);
 
-  // Clear the in-memory preview when the file is replaced.
   useEffect(() => {
     if (!file) {
       setPreviewUrl(null);
@@ -113,6 +187,52 @@ export default function VerifyPage() {
     acceptFile(e.dataTransfer.files?.[0]);
   }
 
+  async function loadScenario(s: DemoScenario) {
+    setScenarioLoading(true);
+    setError(null);
+    setValidationError(null);
+    try {
+      const docResp = await fetch(`/demo/${s.docFile}`);
+      if (!docResp.ok) throw new Error("Scenario asset could not be loaded.");
+      const docBytes = await docResp.arrayBuffer();
+      const docFile = new File([withUniqueSuffix(docBytes)], s.docFile, {
+        type: "image/png",
+      });
+      const err = validateFile(docFile);
+      if (err) {
+        setValidationError(err);
+        setSelectedScenario(null);
+        return;
+      }
+      setFile(docFile);
+
+      if (s.liveFaceFile) {
+        const liveResp = await fetch(`/demo/${s.liveFaceFile}`);
+        if (liveResp.ok) {
+          const liveBlob = await liveResp.blob();
+          setLiveFace(
+            new File([liveBlob], s.liveFaceFile, {
+              type: liveBlob.type || "image/png",
+            }),
+          );
+          setAttachLiveFace(true);
+        }
+      } else {
+        setLiveFace(null);
+        setAttachLiveFace(false);
+      }
+
+      setCheckRegistry(s.registry);
+      setPerformForensics(s.forensics);
+      setDescription(s.description);
+      setSelectedScenario(s);
+    } catch (e) {
+      setError(errorFn(e));
+    } finally {
+      setScenarioLoading(false);
+    }
+  }
+
   function resetAll() {
     setFile(null);
     setLiveFace(null);
@@ -122,6 +242,7 @@ export default function VerifyPage() {
     setRunning(false);
     setStageStates([]);
     setCaseId(null);
+    setSelectedScenario(null);
   }
 
   async function startVerification() {
@@ -140,7 +261,6 @@ export default function VerifyPage() {
     };
 
     try {
-      // 1. Create the case
       setStage("UPLOADED", "active");
       const created = await api<{ id: string }>("/cases", {
         method: "POST",
@@ -153,43 +273,35 @@ export default function VerifyPage() {
       setCaseId(created.id);
       setStage("UPLOADED", "done");
 
-      // 2. Upload the document via Phase 3 ingestion endpoint
       setStage("CLASSIFYING", "active");
       const uploaded = await uploadDocumentStandalone(file, created.id);
       setNewDocumentId(uploaded.id);
 
-      // 2b. Classify the document type
       await classifyDocument(uploaded.id);
       setStage("CLASSIFYING", "done");
 
-      // 3. Preprocess the document image
       setStage("PREPROCESSING", "active");
       await preprocessDocument(uploaded.id);
       setStage("PREPROCESSING", "done");
 
-      // 4. Run the document analysis pipeline
       setStage("EXTRACTING", "active");
       await analyzeDocument(created.id, uploaded.id);
       setStage("EXTRACTING", "done");
 
-      // 4. Field validation
       setStage("VALIDATING", "active");
       await new Promise((r) => setTimeout(r, 500));
       setStage("VALIDATING", "done");
 
-      // 5. Forensics
       if (performForensics) {
         setStage("FORENSIC_ANALYSIS", "active");
         await new Promise((r) => setTimeout(r, 600));
         setStage("FORENSIC_ANALYSIS", "done");
       }
 
-      // 6. Face verification
       setStage("FACE_VERIFICATION", "active");
       await new Promise((r) => setTimeout(r, 500));
       setStage("FACE_VERIFICATION", "done");
 
-      // 7. Risk assessment — full verification
       setStage("RISK_ASSESSMENT", "active");
       await runFullVerification(uploaded.id, {
         liveFace: attachLiveFace ? liveFace : null,
@@ -205,6 +317,7 @@ export default function VerifyPage() {
         case: created.id,
         doc: uploaded.id,
       });
+      if (selectedScenario) params.set("demo", selectedScenario.key);
       router.push(`/verify/results?${params.toString()}`);
     } catch (e) {
       setStage(currentStage || "CLASSIFYING", "error");
@@ -216,16 +329,91 @@ export default function VerifyPage() {
   const started = running || caseId !== null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-in-up">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New Verification</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">New Verification</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">
           Upload an identity or travel document to run the full verification
           pipeline.
         </p>
       </div>
 
       {error ? <Alert title="Verification failed">{error}</Alert> : null}
+
+      {/* Demo scenarios */}
+      {!started ? (
+        <Card>
+          <CardHeader
+            title="Demo scenarios"
+            subtitle="Reproducible synthetic cases run through the real verification pipeline — results are always live API data"
+          />
+          <div className="p-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {DEMO_SCENARIOS.map((s) => {
+                const active = selectedScenario?.key === s.key;
+                const Icon = SCENARIO_ICONS[s.key];
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => loadScenario(s)}
+                    disabled={scenarioLoading}
+                    className={cn(
+                      "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-[transform,color,background-color,border-color,box-shadow] duration-150 hover:-translate-y-[2px] active:scale-[0.97]",
+                      active
+                        ? "border-neutral-800 bg-black text-white shadow-md shadow-neutral-900/20"
+                        : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-neutral-500 hover:bg-neutral-100 hover:shadow-md hover:shadow-neutral-900/10",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-lg",
+                        active
+                          ? "bg-white/10 text-white"
+                          : "bg-neutral-200/70 text-neutral-600",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="text-sm font-semibold">{s.label}</span>
+                    <span
+                      className={cn(
+                        "text-[11px] leading-snug",
+                        active ? "text-neutral-300" : "text-[var(--muted)]",
+                      )}
+                    >
+                      {s.signal}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedScenario ? (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-neutral-300 bg-neutral-200/50 px-3 py-2.5 text-sm text-neutral-800">
+                <span>
+                  <strong className="font-semibold">
+                    {selectedScenario.label} scenario
+                  </strong>{" "}
+                  — {selectedScenario.description}
+                </span>
+                <button
+                  type="button"
+                  onClick={resetAll}
+                  className="shrink-0 text-xs font-medium text-neutral-600 hover:text-black"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
+            <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
+              Scenario inputs are entirely synthetic (no real PII). Verification
+              runs through the same secured API used for live submissions;
+              signals like MRZ readback, registry hits, and forensic anomalies
+              depend on the configured engines.
+            </p>
+          </div>
+        </Card>
+      ) : null}
 
       {/* Upload area */}
       <Card>
@@ -246,40 +434,40 @@ export default function VerifyPage() {
                 className={cn(
                   "flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors",
                   dragging
-                    ? "border-indigo-500 bg-indigo-50/50"
-                    : "border-slate-300 bg-slate-50/50",
+                    ? "border-neutral-400 bg-neutral-200/60"
+                    : "border-[var(--border)] bg-[var(--card)]",
                 )}
               >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-200/60 text-neutral-500">
                   <Upload className="h-7 w-7" aria-hidden />
                 </div>
-                <p className="mt-4 text-sm font-medium text-slate-700">
+                <p className="mt-4 text-sm font-medium text-[var(--text)]">
                   Drag &amp; drop a document image here
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--muted)]">
                   or{" "}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
+                    className="font-medium text-neutral-500 hover:text-black"
                   >
                     browse from your device
                   </button>
                 </p>
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-400">
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[var(--muted)]">
+                  <span className="rounded-full bg-[#f6f7fb] px-2.5 py-1 ring-1 ring-[var(--border)]">
                     JPEG
                   </span>
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                  <span className="rounded-full bg-[#f6f7fb] px-2.5 py-1 ring-1 ring-[var(--border)]">
                     PNG
                   </span>
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                  <span className="rounded-full bg-[#f6f7fb] px-2.5 py-1 ring-1 ring-[var(--border)]">
                     WebP
                   </span>
-                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                  <span className="rounded-full bg-[#f6f7fb] px-2.5 py-1 ring-1 ring-[var(--border)]">
                     PDF
                   </span>
-                  <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-500 ring-1 ring-red-200">
+                  <span className="rounded-full bg-neutral-300/40 px-2.5 py-1 text-black ring-1 ring-neutral-400/40">
                     max {MAX_SIZE_MB} MB
                   </span>
                 </div>
@@ -294,18 +482,16 @@ export default function VerifyPage() {
             </>
           ) : null}
 
-          {/* Validation error */}
           {validationError ? (
             <div className="mt-4">
               <Alert title="File rejected">{validationError}</Alert>
             </div>
           ) : null}
 
-          {/* Preview after upload */}
           {!started && file ? (
             <div className="mt-4">
-              <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
-                <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:flex-row sm:items-center">
+                <div className="scan-frame relative flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[#f6f7fb]">
                   {previewUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -314,15 +500,15 @@ export default function VerifyPage() {
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <FileImage className="h-8 w-8 text-slate-300" aria-hidden />
+                    <FileImage className="h-8 w-8 text-[var(--muted)]" aria-hidden />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                    <FileScan className="h-4 w-4 text-indigo-500" aria-hidden />
+                  <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+                    <FileScan className="h-4 w-4 text-neutral-500" aria-hidden />
                     <span className="truncate">{file.name}</span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-1 text-xs text-[var(--muted)]">
                     {file.type} · {formatBytes(file.size)} · ready
                   </div>
                   <Button
@@ -372,25 +558,25 @@ export default function VerifyPage() {
               />
             </div>
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-3">
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3">
               <input
                 type="checkbox"
                 checked={attachLiveFace}
                 onChange={(e) => setAttachLiveFace(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                className="h-4 w-4 rounded border-[var(--border)] bg-[var(--card)] text-neutral-500"
               />
               <div>
-                <div className="text-sm font-medium text-slate-800">
+                <div className="text-sm font-medium text-[var(--text)]">
                   Attach live face capture
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-[var(--muted)]">
                   Optional — enables face similarity &amp; liveness checks
                 </div>
               </div>
             </label>
 
             {attachLiveFace ? (
-              <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+              <div className="flex items-center gap-3 rounded-lg bg-[#f6f7fb] p-3 text-sm text-[var(--muted)]">
                 <span className="truncate">
                   {liveFace ? liveFace.name : "No live face attached"}
                 </span>
@@ -407,7 +593,7 @@ export default function VerifyPage() {
                 />
                 <label
                   htmlFor="live-face-input"
-                  className="ml-auto cursor-pointer text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                  className="ml-auto cursor-pointer text-xs font-medium text-neutral-500 hover:text-black"
                 >
                   {liveFace ? "Replace" : "Choose file"}
                 </label>
@@ -435,10 +621,10 @@ export default function VerifyPage() {
       {!running && caseId && newDocumentId ? (
         <Card>
           <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-600">
               <ShieldCheck className="h-6 w-6" aria-hidden />
             </div>
-            <p className="text-sm text-slate-700">
+            <p className="text-sm text-[var(--muted)]">
               Verification pipeline finished.
             </p>
             <Button
@@ -455,6 +641,14 @@ export default function VerifyPage() {
   );
 }
 
+const SCENARIO_ICONS: Record<string, typeof ShieldCheck> = {
+  genuine: ShieldCheck,
+  tampered: FileWarning,
+  expired: CalendarX2,
+  blacklisted: Ban,
+  impersonation: UserX,
+};
+
 function ScanIcon() {
   return (
     <span className="inline-flex items-center gap-2">
@@ -467,14 +661,14 @@ function ScanIcon() {
 function ProcessingTracker({ stages }: { stages: StageState[] }) {
   if (stages.length === 0) {
     return (
-      <div className="flex items-center gap-2 p-6 text-sm text-slate-500">
+      <div className="flex items-center gap-2 p-6 text-sm text-[var(--muted)]">
         <Spinner /> Preparing…
       </div>
     );
   }
 
   return (
-    <ul className="divide-y divide-slate-50 p-2">
+    <ul className="divide-y divide-[var(--border)] p-2">
       {stages.map(({ stage, state }) => {
         const label = PROCESSING_LABELS[stage];
         const active = state === "active";
@@ -485,33 +679,33 @@ function ProcessingTracker({ stages }: { stages: StageState[] }) {
             aria-live="polite"
           >
             {state === "done" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-neutral-600" aria-hidden />
             ) : state === "error" ? (
-              <XCircle className="h-4 w-4 shrink-0 text-red-500" aria-hidden />
+              <XCircle className="h-4 w-4 shrink-0 text-black" aria-hidden />
             ) : active ? (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-500" aria-hidden />
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-neutral-500" aria-hidden />
             ) : (
-              <span className="h-4 w-4 shrink-0 rounded-full border-2 border-slate-200" aria-hidden />
+              <span className="h-4 w-4 shrink-0 rounded-full border-2 border-[var(--border)]" aria-hidden />
             )}
             <span
               className={cn(
                 "font-medium",
-                state === "pending" ? "text-slate-400" : "text-slate-700",
+                state === "pending" ? "text-[var(--muted)]" : "text-[var(--text)]",
               )}
             >
               {label}
             </span>
             {active ? (
-              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-indigo-500">
+              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-neutral-500">
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> running
               </span>
             ) : state === "done" ? (
-              <span className="ml-auto text-xs text-emerald-600">done</span>
+              <span className="ml-auto text-xs text-neutral-600">done</span>
             ) : null}
           </li>
         );
       })}
-      <li className="flex items-center gap-2 px-4 py-3 text-xs text-slate-400">
+      <li className="flex items-center gap-2 px-4 py-3 text-xs text-[var(--muted)]">
         <RefreshCw className="h-3.5 w-3.5" aria-hidden />
         Processing is asynchronous — results appear on the results page.
       </li>

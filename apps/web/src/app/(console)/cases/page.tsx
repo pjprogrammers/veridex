@@ -21,6 +21,7 @@ import {
   Spinner,
 } from "@/components/ui";
 import {
+  cn,
   formatDate,
   STATUS_LABELS,
   STATUS_STYLES,
@@ -96,11 +97,11 @@ export default function CasesPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in-up">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Cases</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Cases</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
             Verification cases opened at the checkpoint.
           </p>
         </div>
@@ -154,7 +155,7 @@ export default function CasesPage() {
             )}
           </Select>
         </div>
-        <div className="text-xs text-slate-400">{total} case(s)</div>
+        <div className="text-xs text-[var(--muted)]">{total} case(s)</div>
       </div>
 
       <Card>
@@ -176,49 +177,55 @@ export default function CasesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-xs text-slate-500">
-                  <th className="px-5 py-3 font-medium">Case</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Risk</th>
-                  <th className="px-5 py-3 font-medium">Created</th>
-                  <th className="px-5 py-3 font-medium">Forensics</th>
-                  <th className="px-5 py-3 text-right font-medium">Open</th>
+                <tr className="border-b border-[var(--border)] bg-[#f6f7fb]">
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Case</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Status</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Risk</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Created</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Forensics</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)] text-right">Open</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {cases.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3">
-                      <div className="font-medium text-slate-900">
+              <tbody className="divide-y divide-[var(--border)]">
+                {cases.map((c, idx) => (
+                  <tr
+                    key={c.id}
+                    className={cn(
+                      "table-row-alt transition-colors hover:bg-neutral-100/70",
+                      idx % 2 === 1 && "bg-[#f8f9fc]",
+                    )}
+                  >
+                    <td className="px-6 py-3.5">
+                      <div className="font-semibold text-[var(--text)]">
                         {c.case_number}
                       </div>
-                      <div className="max-w-xs truncate text-xs text-slate-500">
+                      <div className="max-w-xs truncate text-xs text-[var(--muted)]">
                         {c.description || "—"}
                       </div>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-6 py-3.5">
                       <Badge className={STATUS_STYLES[c.status]}>
                         {STATUS_LABELS[c.status]}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-6 py-3.5">
                       <RiskBadge level={c.risk_level} />
                     </td>
-                    <td className="px-5 py-3 text-xs text-slate-500">
+                    <td className="px-6 py-3.5 text-xs text-[var(--muted)]">
                       {formatDate(c.created_at)}
                     </td>
-                    <td className="px-5 py-3 text-xs">
+                    <td className="px-6 py-3.5 text-xs">
                       <Link
                         href={`/cases/${c.id}/forensics`}
-                        className="font-medium text-indigo-600 hover:text-indigo-500"
+                        className="font-medium text-neutral-500 hover:text-black"
                       >
                         Forensics →
                       </Link>
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-6 py-3.5 text-right">
                       <Link
                         href={`/cases/${c.id}`}
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                        className="text-xs font-medium text-neutral-500 hover:text-black"
                       >
                         View →
                       </Link>
@@ -229,8 +236,8 @@ export default function CasesPage() {
             </table>
           </div>
         )}
-        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
-          <span className="text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-[var(--border)] px-5 py-3">
+          <span className="text-xs text-[var(--muted)]">
             Showing {cases ? cases.length : 0} of {total}
           </span>
           <div className="flex items-center gap-2">
@@ -242,7 +249,7 @@ export default function CasesPage() {
             >
               Prev
             </Button>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-[var(--muted)]">
               {page + 1} / {totalPages}
             </span>
             <Button
@@ -258,9 +265,9 @@ export default function CasesPage() {
       </Card>
 
       {creating ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--dark)]/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--card)] p-6 shadow-2xl text-[var(--text)] border border-[var(--border)]">
+            <h2 className="text-lg font-semibold text-[var(--text)]">
               Open a new case
             </h2>
             <div className="mt-4 space-y-4">
@@ -298,8 +305,8 @@ export default function CasesPage() {
               ).map(({ key, label }) => (
                 <label
                   key={key}
-                  className="flex items-center gap-2 text-sm text-slate-700"
-                >
+                    className="flex items-center gap-2 text-sm text-[var(--text)]"
+                  >
                   <input
                     type="checkbox"
                     checked={form[key]}
@@ -307,7 +314,7 @@ export default function CasesPage() {
                       const v = e.target.checked;
                       setForm((f) => ({ ...f, [key]: v }));
                     }}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                    className="h-4 w-4 rounded border-[var(--border)] text-neutral-500"
                   />
                   {label}
                 </label>

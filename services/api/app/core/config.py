@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     FACE_SIMILARITY_THRESHOLD: float = 0.4
     FACE_ENGINE: str = "baseline"
 
+    # AI / CV showcase layer (the standalone `ai` package at the repo root).
+    # Directory that CONTAINS the top-level `ai/` package. Leave blank to let
+    # the bridge auto-locate it (repo root in dev, /app in the API image).
+    AI_PACKAGE_DIR: str | None = None
+
     # Risk Scoring
     RISK_HIGH_THRESHOLD: float = 0.7
     RISK_MEDIUM_THRESHOLD: float = 0.4

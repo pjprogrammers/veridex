@@ -113,7 +113,7 @@ export interface RegistryListResponse {
 export interface RiskAssessment {
   score: number;
   level: RiskLevel;
-  factors: string[];
+  factors: Array<{ label?: string; detail?: string; [key: string]: unknown }>;
   explanation: string;
   recommendations?: string[];
 }

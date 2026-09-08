@@ -14,6 +14,11 @@ import type {
 } from "@/lib/types";
 import { RiskBadge, RiskGauge } from "@/components/risk";
 import {
+  RiskReasons,
+  RiskRecommendations,
+  type RiskFactorItem,
+} from "@/components/risk-reasons";
+import {
   Alert,
   Badge,
   Button,
@@ -146,7 +151,7 @@ export default function CaseDetailPage() {
         <Alert title="Could not load case">{error}</Alert>
         <Link
           href="/cases"
-          className="mt-4 inline-block text-sm text-indigo-600 hover:text-indigo-500"
+          className="mt-4 inline-block text-sm text-neutral-500 hover:text-black"
         >
           ← Back to cases
         </Link>
@@ -165,26 +170,26 @@ export default function CaseDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in-up">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
             href="/cases"
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-xs font-medium text-neutral-500 hover:text-black"
           >
             ← All cases
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
             {data.case_number}
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-[var(--muted)]">
             {data.description || "No description"} · created{" "}
             {formatDate(data.created_at)}
           </p>
           <div className="mt-2">
             <Link
               href={`/cases/${caseId}/forensics`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-500"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-black"
             >
               <Fingerprint className="h-3.5 w-3.5" aria-hidden />
               Open forensics analysis →
@@ -225,10 +230,15 @@ export default function CaseDetailPage() {
                 level={data.risk_level ?? "UNKNOWN"}
               />
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--muted)]">
                 Run full verification to assess risk.
               </p>
             )}
+            <RiskReasons factors={riskReasonsFor(data, verification)} className="mt-5" />
+            <RiskRecommendations
+              recommendations={riskRecommendationsFor(data, verification)}
+              explanation={riskExplanationFor(data, verification)}
+            />
           </div>
         </Card>
 
@@ -268,7 +278,7 @@ export default function CaseDetailPage() {
               />
             </div>
           ) : (
-            <ul className="divide-y divide-slate-50">
+            <ul className="divide-y divide-[var(--border)]">
               {data.documents.map((doc) => {
                 const active = doc.id === selectedDocId;
                 return (
@@ -281,20 +291,20 @@ export default function CaseDetailPage() {
                       }}
                       className={cn(
                         "flex w-full items-center justify-between gap-4 px-5 py-3 text-left transition-colors",
-                        active ? "bg-indigo-50/60" : "hover:bg-slate-50",
+                        active ? "bg-neutral-200/60" : "hover:bg-[#f6f7fb]",
                       )}
                     >
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                        <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
                           {doc.document_type || "Document"}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                        <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--muted)]">
                           <span>{doc.mime_type}</span>
                           <span>{formatBytes(doc.file_size)}</span>
                         </div>
                       </div>
                       <div className="shrink-0 text-right text-xs">
-                        <div className="text-slate-500">
+                        <div className="text-[var(--muted)]">
                           quality{" "}
                           {doc.quality_score != null
                             ? `${Math.round(doc.quality_score * 100)}%`
@@ -302,7 +312,7 @@ export default function CaseDetailPage() {
                         </div>
                         <Link
                           href={`/cases/${caseId}/forensics?doc=${doc.id}`}
-                          className="mt-1 inline-block font-medium text-indigo-600 hover:text-indigo-500"
+                          className="mt-1 inline-block font-medium text-neutral-500 hover:text-black"
                         >
                           Forensics →
                         </Link>
@@ -330,7 +340,7 @@ export default function CaseDetailPage() {
               {busy === "verify" ? <Spinner /> : null}
               <Scale className="h-4 w-4" aria-hidden /> Full verification
             </Button>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text)]">
               <input
                 type="file"
                 accept="image/jpeg,image/png"
@@ -343,7 +353,7 @@ export default function CaseDetailPage() {
               />
               {liveFace ? (
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-neutral-200/70 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-400/40"
                 >
                   live face: {liveFace.name}
                   <button type="button" onClick={() => setLiveFace(null)}>
@@ -351,7 +361,7 @@ export default function CaseDetailPage() {
                   </button>
                 </span>
               ) : (
-                <span className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                <span className="text-xs font-medium text-neutral-500 hover:text-black">
                   + attach live face
                 </span>
               )}
@@ -367,29 +377,29 @@ export default function CaseDetailPage() {
             action={<RiskBadge level={verification.risk?.level ?? "UNKNOWN"} />}
           />
           <div className="grid gap-x-8 gap-y-3 p-5 md:grid-cols-2">
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-[var(--text)]">
               Document:{" "}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-[var(--text)]">
                 {verification.document_type || "—"}
               </span>
             </span>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-[var(--text)]">
               OCR confidence:{" "}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-[var(--text)]">
                 {verification.ocr_confidence != null
                   ? `${(verification.ocr_confidence * 100).toFixed(0)}%`
                   : "—"}
               </span>
             </span>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-[var(--text)]">
               Recommendation:{" "}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-[var(--text)]">
                 {verification.recommendation || "—"}
               </span>
             </span>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-[var(--text)]">
               Face match:{" "}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-[var(--text)]">
                 {String(
                   (
                     ((verification.face ?? {}) as Record<string, unknown>)
@@ -417,8 +427,8 @@ export default function CaseDetailPage() {
             className={cn(
               "border-b px-5 py-3",
               auditVerify.valid
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 bg-red-50 text-red-800",
+                ? "border-neutral-300 bg-neutral-200/70 text-neutral-600"
+                : "border-neutral-700 bg-neutral-900/10 text-black",
             )}
           >
             <div className="text-sm font-semibold">
@@ -442,33 +452,33 @@ export default function CaseDetailPage() {
             <EmptyState title="No audit entries yet" />
           </div>
         ) : (
-          <ul className="divide-y divide-slate-50">
+          <ul className="divide-y divide-[var(--border)]">
             {audit.map((entry) => (
               <li key={entry.id} className="px-5 py-3">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-slate-100 text-slate-700 ring-slate-500/20">
+                    <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
                       #{entry.id}
                     </Badge>
-                    <span className="text-sm font-medium text-slate-900">
+                    <span className="text-sm font-medium text-[var(--text)]">
                       {entry.action}
                     </span>
                     {entry.actor_role ? (
-                      <Badge className="bg-indigo-50 text-indigo-700 ring-indigo-600/20">
+                      <Badge className="bg-neutral-200/60 text-neutral-500 ring-neutral-400/40">
                         {entry.actor_role}
                       </Badge>
                     ) : null}
                   </div>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-[var(--muted)]">
                     {formatDate(entry.timestamp)}
                   </span>
                 </div>
                 {Object.keys(entry.payload ?? {}).length > 0 ? (
-                  <pre className="mt-1.5 whitespace-pre-wrap font-mono text-[11px] text-slate-500">
+                  <pre className="mt-1.5 whitespace-pre-wrap font-mono text-[11px] text-[var(--muted)]">
                     {JSON.stringify(entry.payload, null, 2)}
                   </pre>
                 ) : null}
-                <div className="mt-1.5 flex items-center gap-3 font-mono text-[10px] text-slate-400">
+                <div className="mt-1.5 flex items-center gap-3 font-mono text-[10px] text-[var(--muted)]">
                   <span>prev: {entry.previous_hash ?? "—"}</span>
                   <span>cur: {entry.current_hash?.slice(0, 16)}…</span>
                 </div>
@@ -479,4 +489,47 @@ export default function CaseDetailPage() {
       </Card>
     </div>
   );
+}
+
+function metadataOf(data: CaseDetail | null): Record<string, unknown> | null {
+  return data?.case_metadata ?? null;
+}
+
+function isFactorLike(v: unknown): v is RiskFactorItem {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function riskReasonsFor(
+  data: CaseDetail | null,
+  verification: VerificationReport | null,
+): RiskFactorItem[] {
+  if (Array.isArray(verification?.risk?.factors)) {
+    return verification.risk.factors;
+  }
+  const stored = metadataOf(data)?.["risk_factors"];
+  if (Array.isArray(stored)) {
+    return stored.map((f) => (isFactorLike(f) ? f : { detail: String(f) }));
+  }
+  return [];
+}
+
+function riskRecommendationsFor(
+  data: CaseDetail | null,
+  verification: VerificationReport | null,
+): string[] {
+  if (Array.isArray(verification?.risk?.recommendations)) {
+    return verification.risk.recommendations;
+  }
+  const stored = metadataOf(data)?.["risk_recommendations"];
+  return Array.isArray(stored) ? stored.map(String) : [];
+}
+
+function riskExplanationFor(
+  data: CaseDetail | null,
+  verification: VerificationReport | null,
+): string | null {
+  const live = verification?.risk?.explanation;
+  if (live) return live;
+  const stored = metadataOf(data)?.["risk_explanation"];
+  return typeof stored === "string" ? stored : null;
 }

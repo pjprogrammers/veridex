@@ -6,9 +6,11 @@ No real personal data is used.
 Roles seeded (RBAC, authoritative via users -> user_roles -> roles):
   OFFICER, SUPERVISOR, ADMIN, AUDITOR
 
-Development credentials (synthetic only):
-  admin@veridex.local  / VeridexDev123!
-  officer1@veridex.local / OfficerDev123!
+Development credentials (synthetic only, login by username):
+  admin / VeridexDev123!
+  officer1 / OfficerDev123!
+  supervisor1 / SupervisorDev123!
+  auditor1 / AuditorDev123!
 """
 import asyncio
 import random
@@ -241,13 +243,13 @@ async def _seed_registry(db) -> None:
 
 
 async def _seed_demo_cases(db) -> None:
-    """Create a couple of demo cases with risk/audit data for the dashboard."""
-    existing = await db.scalar(
-        select(func.count()).select_from(VerificationCase)
-    )
-    if existing and existing > 0:
-        return
+    """Create (or refresh) demo cases with risk/audit data for the dashboard.
 
+    Demo cases are keyed by case_number, so re-running the seed updates
+    existing rows instead of skipping them. Risk reasoning lives in
+    ``case_metadata`` and is rendered by the web console on the case detail
+    page, demonstrating how risk-assessment reasons are displayed.
+    """
     officer = await db.scalar(select(User).where(User.username == "officer1"))
 
     demo = [
@@ -260,6 +262,37 @@ async def _seed_demo_cases(db) -> None:
             "days_ago": 1,
             "created_by": officer.id if officer else None,
             "actions": [("case_created", {"case_number": "VRX-2026-000001"})],
+            "case_metadata": {
+                "check_registry": True,
+                "perform_forensics": True,
+                "risk_factors": [
+                    {
+                        "label": "Machine-readable zone not read",
+                        "detail": "no MRZ data extracted for cross-validation",
+                    },
+                    {
+                        "label": "Document validation incomplete",
+                        "detail": "0 of 12 consistency checks could be verified",
+                    },
+                    {
+                        "label": "Face comparison inconclusive",
+                        "detail": "no live face capture attached",
+                    },
+                    {
+                        "label": "Registry check not conclusive",
+                        "detail": "document number unavailable for lookup",
+                    },
+                ],
+                "risk_explanation": (
+                    "Multiple signals could not be confirmed. The document could not be "
+                    "positively validated, so the case is escalated for manual review."
+                ),
+                "risk_recommendations": [
+                    "Re-capture the document under OCR-enabled optics",
+                    "Attach a live face capture and re-run biometrics",
+                    "Perform forensic analysis on the re-captured image",
+                ],
+            },
         },
         {
             "case_number": "VRX-2026-000002",
@@ -270,32 +303,75 @@ async def _seed_demo_cases(db) -> None:
             "days_ago": 3,
             "created_by": officer.id if officer else None,
             "actions": [("case_created", {"case_number": "VRX-2026-000002"})],
+            "case_metadata": {
+                "check_registry": True,
+                "perform_forensics": True,
+                "risk_factors": [
+                    {
+                        "label": "Primary checks passed",
+                        "detail": "document type and field layout recognized",
+                    },
+                    {
+                        "label": "Field consistency verified",
+                        "detail": "12 of 12 cross-field checks passed",
+                    },
+                    {
+                        "label": "No adverse registry signals",
+                        "detail": "document marked valid in registry",
+                    },
+                ],
+                "risk_explanation": (
+                    "All primary indicators are consistent with a genuine document. "
+                    "Low residual risk remains from image quality and the synthetic "
+                    "capture environment."
+                ),
+                "risk_recommendations": [
+                    "Standard checkpoint screening is sufficient",
+                    "No escalation required",
+                ],
+            },
         },
     ]
 
     for spec in demo:
-        case = VerificationCase(
-            case_number=spec["case_number"],
-            description=spec["description"],
-            status=spec.get("status", "in_review"),
-            risk_level=spec.get("risk_level"),
-            risk_score=spec.get("risk_score"),
-            created_by=spec["created_by"],
-            created_at=datetime.utcnow() - timedelta(days=spec["days_ago"]),
-            updated_at=datetime.utcnow() - timedelta(days=spec["days_ago"]),
-            case_metadata={"check_registry": True, "perform_forensics": True},
-        )
-        db.add(case)
-        await db.flush()
-        for action, payload in spec["actions"]:
-            await append_audit_entry(
-                db,
-                case_id=case.id,
-                action=action,
-                actor_id=spec["created_by"],
-                actor_role=officer.role if officer else "officer",
-                payload=payload,
+        existing_case = await db.scalar(
+            select(VerificationCase).where(
+                VerificationCase.case_number == spec["case_number"]
             )
+        )
+        metadata = dict(spec.get("case_metadata", {}))
+        if existing_case:
+            existing_case.description = spec["description"]
+            existing_case.status = spec.get("status", "in_review")
+            existing_case.risk_level = spec.get("risk_level")
+            existing_case.risk_score = spec.get("risk_score")
+            existing_case.updated_at = datetime.utcnow() - timedelta(days=spec["days_ago"])
+            existing_case.case_metadata = metadata
+            case = existing_case
+            logger.info("demo_case_updated", case_number=spec["case_number"])
+        else:
+            case = VerificationCase(
+                case_number=spec["case_number"],
+                description=spec["description"],
+                status=spec.get("status", "in_review"),
+                risk_level=spec.get("risk_level"),
+                risk_score=spec.get("risk_score"),
+                created_by=spec["created_by"],
+                created_at=datetime.utcnow() - timedelta(days=spec["days_ago"]),
+                updated_at=datetime.utcnow() - timedelta(days=spec["days_ago"]),
+                case_metadata=metadata,
+            )
+            db.add(case)
+            await db.flush()
+            for action, payload in spec["actions"]:
+                await append_audit_entry(
+                    db,
+                    case_id=case.id,
+                    action=action,
+                    actor_id=spec["created_by"],
+                    actor_role=officer.role if officer else "officer",
+                    payload=payload,
+                )
     logger.info("seeded_demo_cases", count=len(demo))
 
 

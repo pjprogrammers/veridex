@@ -208,9 +208,138 @@ def make_national_id(doc: dict) -> Image.Image:
     return img
 
 
+# ---------------------------------------------------------------------------
+# SIH demo scenario assets
+#
+# The demo-scenario selector on the /verify page drives the *real* API
+# pipeline; each scenario only supplies a synthetic input document (and, for
+# the impersonation case, a distinctly different synthetic "live face"). All
+# results on the results page come from actual API responses.
+# ---------------------------------------------------------------------------
+
+DEMO_SCENARIOS = {
+    "genuine": {
+        "doc": {"kind": "passport", "doc_number": "P12345678", "surname": "SMITH",
+                 "given": "JORDAN", "dob": "910415", "expiry": "360415",
+                 "sex": "M", "nationality": "GBR", "personal": "ZE184226"},
+        "file": "genuine_passport.png",
+    },
+    "tampered": {
+        "doc": {"kind": "passport", "doc_number": "P12345678", "surname": "SMITH",
+                 "given": "JORDAN", "dob": "910415", "expiry": "360415",
+                 "sex": "M", "nationality": "GBR", "personal": "ZE184226"},
+        "file": "tampered_passport.png",
+    },
+    "expired": {
+        "doc": {"kind": "passport", "doc_number": "Q88776655", "surname": "OBI",
+                 "given": "MARIA", "dob": "820617", "expiry": "080915",
+                 "sex": "F", "nationality": "NGA", "personal": "XA0011223"},
+        "file": "expired_passport.png",
+    },
+    "blacklisted": {
+        "doc": {"kind": "passport", "doc_number": "B55544433", "surname": "CHEN",
+                 "given": "MORGAN", "dob": "900310", "expiry": "260310",
+                 "sex": "F", "nationality": "USA", "personal": "BL00112233"},
+        "file": "blacklisted_passport.png",
+    },
+}
+
+
+def _splice_patch(img: Image.Image) -> Image.Image:
+    """Simulate a crude retouch: paste a mismatched texture patch over the
+    date field and re-encode at a different JPEG quality. The forensics engine
+    measures ELA / noise / splice anomalies on real pixels."""
+    out = img.copy()
+    d = ImageDraw.Draw(out)
+    px, py, pw, ph = 360, 380, 200, 70
+    patch = Image.new("RGB", (pw, ph), "#cfc4b0")
+    noise = Image.effect_noise((pw, ph), 24).convert("RGB")
+    patch = Image.blend(patch, noise, 0.35)
+    out.paste(patch, (px, py))
+    d.rectangle([px, py, px + pw, py + ph], outline="#b9792f", width=2)
+    # Re-encode through JPEG to destroy original compression fingerprint
+    tmp = out.convert("RGB")
+    tmp.save("/tmp/_tamper_tmp.jpg", "JPEG", quality=62)
+    return Image.open("/tmp/_tamper_tmp.jpg")
+
+
+def make_live_face(doc: dict, variant: str) -> Image.Image:
+    """Synthetic 'live selfie' portraits (stylized, like the document photos).
+
+    ``variant="selfie"`` reuses the document portrait styling so the baseline
+    face engine sees a near-identical face region (high similarity).
+    ``variant="other"`` renders a clearly different person (low similarity),
+    used by the Impersonation scenario.
+    """
+    W, H = 480, 640
+    img = Image.new("RGB", (W, H), "#c9cdd4")
+    d = ImageDraw.Draw(img)
+
+    # Room / background band to look like a selfie
+    d.rectangle([0, H - 120, W, H], fill="#8b929c")
+
+    skin = "#d8a47f" if variant == "selfie" else "#7a4a2f"
+    shirt = "#3d5466" if variant == "selfie" else "#2c3038"
+
+    # Head
+    d.ellipse([W // 2 - 130, 60, W // 2 + 130, 430], fill=skin)
+    # Shirt / shoulders
+    d.polygon([(W // 2 - 220, H - 40), (W // 2 + 220, H - 40), (W // 2 + 170, 330),
+               (W // 2 - 170, 330)], fill=shirt)
+    # Hair cap
+    hair = "#39291e" if variant == "selfie" else "#16181c"
+    d.ellipse([W // 2 - 132, 52, W // 2 + 132, 210], fill=hair)
+    d.rectangle([W // 2 - 132, 185, W // 2 + 132, 205], fill=hair)
+    # Eyes / brows
+    ecol = "#3a2c1f"
+    d.ellipse([W // 2 - 70, 225, W // 2 - 28, 265], fill="white")
+    d.ellipse([W // 2 + 28, 225, W // 2 + 70, 265], fill="white")
+    d.ellipse([W // 2 - 62, 238, W // 2 - 38, 254], fill=ecol)
+    d.ellipse([W // 2 + 38, 238, W // 2 + 62, 254], fill=ecol)
+    d.rectangle([W // 2 - 78, 208, W // 2 - 22, 222], fill=hair)
+    d.rectangle([W // 2 + 22, 208, W // 2 + 78, 222], fill=hair)
+    # Nose
+    d.polygon([(W // 2, 265), (W // 2 - 18, 330), (W // 2 + 18, 330)], fill="#c18a63" if variant == "selfie" else "#5e3a26")
+    # Mouth
+    d.arc([W // 2 - 42, 330, W // 2 + 42, 395], 0, 180, fill="#b06a4e" if variant == "selfie" else "#4a2b1c", width=7)
+
+    return img
+
+
+def make_demo_assets(out_dir: Path) -> None:
+    """Render all SIH demo scenario input assets."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for key, spec in DEMO_SCENARIOS.items():
+        doc = spec["doc"]
+        name = spec["file"]
+        img = make_passport(doc) if doc["kind"] == "passport" else make_national_id(doc)
+        if key == "tampered":
+            img = _splice_patch(img)
+        out = out_dir / name
+        img.save(out)
+        print(f"wrote {out}")
+
+    # Impersonation live face (different person) — produces a real face
+    # no_match verdict against the passport portrait.
+    other = make_live_face(DEMO_SCENARIOS["genuine"]["doc"], "other")
+    out = out_dir / "live_other.png"
+    other.save(out)
+    print(f"wrote {out}")
+
+    # Genuine live selfie (same person styling) — optional high-similarity
+    # companion for the genuine / multiple-identity scenarios.
+    selfie = make_live_face(DEMO_SCENARIOS["genuine"]["doc"], "selfie")
+    out = out_dir / "live_selfie.png"
+    selfie.save(out)
+    print(f"wrote {out}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--list", action="store_true", help="print known document numbers")
+    parser.add_argument("--demo", action="store_true",
+                        help="write SIH demo scenario assets into data/synthetic/demo")
     args = parser.parse_args()
 
     if args.list:
@@ -228,6 +357,9 @@ def main() -> None:
         print(f"wrote {out}")
         print(f"  MRZ1: {m1}")
         print(f"  MRZ2: {m2}")
+
+    if args.demo:
+        make_demo_assets(OUT_DIR / "demo")
 
 
 if __name__ == "__main__":

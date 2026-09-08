@@ -39,6 +39,7 @@ build/
 
 *.tsbuildinfo
 next-env.d.ts
+.playwright-mcp/
 
 # =========================
 # Turborepo
@@ -88,3 +89,11 @@ secrets/
 # Local uploads / runtime data
 # =========================
 uploads/
+
+
+# AI model weights
+data/models/
+services/api/data/models/
+
+# Local database
+services/api/veridex.db

@@ -1,24 +1,484 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #171717;
+  /* ===== Monochrome palette: black / grey / white only ===== */
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --dark: #141416;
+  --dark-2: #1f1f23;
+  --text: #18181b;
+  --muted: #71717a;
+  --grey-md: #4d4d55;
+  --ink: #0c0c0d;
+  --grey-strong: #52525b;
+  --border: #e4e4e7;
+  --sidebar-bg: #fafafa;
+  /* Monochrome gradient for logo badge / primary actions */
+  --grad-start: #3f3f46;
+  --grad-end: #111113;
+  --grad-x: linear-gradient(135deg, #3f3f46, #111113);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  height: 100%;
 }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+
+::selection { background: var(--dark); color: #fff; }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: rgba(139, 141, 152, 0.4) transparent;
+}
+
+/* ===== Cards (reference .panel / .table-panel) ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 24px rgba(28, 29, 33, 0.08);
+  transform: translateY(-1px);
+  border-color: #d7dae1;
+}
+
+/* ===== KPI cards (reference .kpi-card) ===== */
+.kpi-card {
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.kpi-card.dark {
+  background: var(--dark);
+  color: #fff;
+}
+.kpi-card.light {
+  background: #fff;
+  border: 1px solid var(--border);
+}
+.kpi-label {
+  font-size: 12.5px;
+  opacity: 0.75;
+  margin-bottom: 10px;
+}
+.kpi-card.light .kpi-label {
+  color: var(--muted);
+  opacity: 1;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.kpi-card.dark .kpi-value { color: #fff; }
+.kpi-delta {
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.kpi-card.dark .kpi-delta { color: #a9abb5; }
+.kpi-delta.up { color: var(--grey-md); }
+.kpi-delta.up::before { content: "↗"; }
+.kpi-delta.down { color: var(--ink); }
+.kpi-delta.down::before { content: "↘"; }
+.kpi-delta .grey { color: inherit; opacity: 0.7; }
+
+/* ===== Legacy .kpi-dark (kept for the kpi-dark card elsewhere) ===== */
+.kpi-dark {
+  background: var(--dark);
+  color: #fff;
+}
+.kpi-dark .kpi-label { color: rgba(255, 255, 255, 0.75); }
+.kpi-dark .kpi-delta { color: #a9abb5; }
+.kpi-dark .kpi-value { color: #fff; }
+
+/* ===== Reference chart (reference .chart-wrap etc.) ===== */
+.chart-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 180px;
+  position: relative;
+  padding-left: 34px;
+}
+.y-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+.bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  padding-left: 14px;
+}
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 8px;
+  width: 34px;
+}
+.bar {
+  width: 26px;
+  border-radius: 6px 6px 0 0;
+  background: var(--dark);
+}
+.bar-col.highlight .bar { background: #c9c9cf; }
+.bar-month { font-size: 11px; color: var(--muted); }
+
+/* ===== Calendar / growth panel (reference) ===== */
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.cal-head h3 {
+  font-size: 14.5px;
+  margin: 0;
+  font-weight: 700;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.cal-strip {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  width: 34px;
+}
+.cal-day .num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 12.5px;
+}
+.cal-day.active .num {
+  background: var(--dark);
+  color: #fff;
+  font-weight: 700;
+}
+.growth-box {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.growth-label { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.growth-delta {
+  font-size: 11px;
+  color: var(--grey-md);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.growth-delta::before { content: "↗"; }
+.ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ring-inner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ===== Course/document thumb (reference .course-thumb) ===== */
+.course-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3f3f46, #111113);
+  flex-shrink: 0;
+}
+
+/* ===== Table ===== */
+.table-row-alt:nth-child(even) {
+  background-color: #f8f8fa;
+}
+
+/* ===== Segmented control (reference .segmented) ===== */
+.segmented {
+  display: inline-flex;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.segmented button {
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+.segmented button.active {
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+}
+.segmented button:not(.active):hover {
+  background: #e9ebf1;
+}
+
+/* ===== Status pill (reference .status-pill) ===== */
+.status-pill {
+  background: var(--grey-md);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 16px;
+  border-radius: 16px;
+  display: inline-block;
+}
+
+/* ===== Logo badge (reference .logo-badge) ===== */
+.logo-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--grad-x);
+  flex-shrink: 0;
+}
+
+/* ===== Progress bar (reference ring / bars) ===== */
+.progress-track {
+  height: 2.5px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #ececef;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--dark);
+  transition: width 0.5s ease-out;
+}
+
+/* Smooth page transitions */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* KPI counter animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-count-up {
+  animation: countUp 0.4s ease-out;
+}
+
+/* ============================================================
+   Micro-animations — subtle, professional, always gated behind
+   prefers-reduced-motion. Animations only touch transform and
+   opacity (transform-origin kept explicit for scale animations).
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Grow axis (progress fills, risk gauge bars, chart bars) */
+  .micro-grow-x {
+    transform-origin: left center;
+    animation: microGrowX 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .micro-grow-y {
+    transform-origin: center bottom;
+    animation: microGrowY 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Fade-only entrance (type elements) */
+  .micro-fade-in {
+    animation: microFadeIn 0.3s ease-out both;
+  }
+
+  /* Decision badges / key verdict chips */
+  .micro-badge-in {
+    animation: microBadgeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Staggered list reveal — children set `--i` (index) inline */
+  .micro-stagger > * {
+    opacity: 0;
+    animation: microReveal 0.4s ease-out both;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+
+  /* Skeleton sweep instead of a flat pulse */
+  .micro-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: #e8e8ec;
+  }
+  .micro-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.65) 50%,
+      transparent 70%
+    );
+    transform: translateX(-100%);
+    animation: microShimmerSweep 1.4s ease-in-out infinite;
+  }
+
+  /* Live status dot (top bar) — slow, calm breathing */
+  .micro-pulse-dot {
+    animation: microPulseDot 2.6s ease-in-out infinite;
+  }
+
+  /* Physical push on press (nav items, icon buttons) */
+  .micro-press {
+    transition: transform 0.12s ease;
+  }
+  .micro-press:active {
+    transform: scale(0.97);
+  }
+
+  /* Document-preview scanner sweeper (verify page) */
+  .scan-frame::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -12%;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(12, 12, 13, 0.55),
+      transparent
+    );
+    pointer-events: none;
+    animation: scanSweep 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+}
+
+/* Stagger animation-delay reads `--i` even under reduced motion guards */
+.micro-stagger > * {
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@keyframes microGrowX {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes microGrowY {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes microFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes microBadgeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes microReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes microShimmerSweep {
+  100% { transform: translateX(100%); }
+}
+@keyframes microPulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes scanSweep {
+  0% { top: -12%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 112%; opacity: 0; }
+}
+
+/* Respect users who prefer reduced motion: collapse all animation
+   and transition to an instant state. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01s !important;
+    scroll-behavior: auto !important;
+  }
 }

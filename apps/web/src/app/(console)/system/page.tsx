@@ -23,10 +23,9 @@ import { cn } from "@/lib/utils";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-const ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, "");
 
-const COLOR_OK = "#10b981";
-const COLOR_ERROR = "#ef4444";
+const COLOR_OK = "#52525b";
+const COLOR_ERROR = "#18181b";
 
 function serviceIcon(name: string) {
   if (name === "postgres" || name === "redis" || name === "minio")
@@ -44,8 +43,8 @@ export default function SystemPage() {
     setLoading(true);
     setError(null);
     try {
-      const hRes = await fetch(`${ORIGIN}/health`);
-      const rRes = await fetch(`${ORIGIN}/ready`);
+      const hRes = await fetch(`${API_BASE}/health`);
+      const rRes = await fetch(`${API_BASE}/ready`);
       if (!hRes.ok || !rRes.ok)
         throw new Error(`Health endpoint returned ${hRes.status}`);
       setHealth((await hRes.json()) as HealthStatus);
@@ -75,11 +74,11 @@ export default function SystemPage() {
   const overall = ready?.status ?? health?.status ?? null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">System Health</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">System Health</h1>
+          <p className="mt-0.5 text-sm text-[var(--muted)]">
             Dependencies and service availability · API v{health?.version ?? "—"}
           </p>
         </div>
@@ -88,12 +87,12 @@ export default function SystemPage() {
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
               !overall
-                ? "bg-slate-100 text-slate-600 ring-slate-500/20"
+                ? "bg-[#ececef] text-[var(--muted)] ring-[var(--border)]"
                 : overall === "ok"
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                  ? "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40"
                   : overall === "degraded"
-                    ? "bg-amber-50 text-amber-700 ring-amber-600/20"
-                    : "bg-red-50 text-red-700 ring-red-600/20",
+                    ? "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40"
+                    : "bg-neutral-200/80 text-black ring-neutral-400/40",
             )}
           >
             {overall ? (
@@ -126,39 +125,72 @@ export default function SystemPage() {
       ) : ready ? (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-5">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Services operational
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-emerald-600">
-                  {okCount}
-                </span>
-                <span className="text-sm text-slate-500">/ {services.length}</span>
+            <Card className="card-hover p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Services operational
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-3xl font-bold tracking-tight text-neutral-600">
+                      {okCount}
+                    </span>
+                    <span className="text-sm text-[var(--muted)]">/ {services.length}</span>
+                  </div>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-200/70 text-neutral-600">
+                  <CheckCircle2 className="h-5 w-5" aria-hidden />
+                </div>
               </div>
             </Card>
-            <Card className="p-5">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Unreachable
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span
+            <Card className="card-hover p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Unreachable
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span
+                      className={cn(
+                        "text-3xl font-bold tracking-tight",
+                        errorCount > 0 ? "text-black" : "text-neutral-600",
+                      )}
+                    >
+                      {errorCount}
+                    </span>
+                    <span className="text-sm text-[var(--muted)]">/ {services.length}</span>
+                  </div>
+                </div>
+                <div
                   className={cn(
-                    "text-3xl font-bold",
-                    errorCount > 0 ? "text-red-600" : "text-emerald-600",
+                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                    errorCount > 0 ? "bg-neutral-200/80 text-black" : "bg-neutral-200/70 text-neutral-600",
                   )}
                 >
-                  {errorCount}
-                </span>
-                <span className="text-sm text-slate-500">/ {services.length}</span>
+                  <XCircle className="h-5 w-5" aria-hidden />
+                </div>
               </div>
             </Card>
-            <Card className="p-5">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Readiness
-              </div>
-              <div className="mt-2 text-2xl font-bold text-slate-800">
-                {ready.status.toUpperCase()}
+            <Card className="card-hover p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Readiness
+                  </div>
+                  <div className="mt-2 text-3xl font-bold tracking-tight text-[var(--text)]">
+                    {ready.status.toUpperCase()}
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                    ready.status === "ok"
+                      ? "bg-neutral-200/70 text-neutral-600"
+                      : "bg-neutral-300/40 text-neutral-800",
+                  )}
+                >
+                  <Activity className="h-5 w-5" aria-hidden />
+                </div>
               </div>
             </Card>
           </div>
@@ -195,28 +227,35 @@ export default function SystemPage() {
                   return (
                     <li
                       key={name}
-                      className="flex items-center justify-between rounded-lg border border-slate-100 px-4 py-3"
+                      className="card-hover flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm font-medium capitalize text-slate-800">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-lg",
+                            ok ? "bg-neutral-200/70 text-neutral-600" : "bg-neutral-200/80 text-black",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium capitalize text-[var(--text)]">
                           {name}
                         </span>
                       </div>
                       {ok ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-                          <CheckCircle2 className="h-4 w-4" /> ok
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-200/70 px-2.5 py-0.5 text-xs font-semibold text-neutral-600 ring-1 ring-inset ring-neutral-400/40">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> operational
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600">
-                          <XCircle className="h-4 w-4" /> error
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-200/80 px-2.5 py-0.5 text-xs font-semibold text-black ring-1 ring-inset ring-neutral-400/40">
+                          <XCircle className="h-3.5 w-3.5" /> unreachable
                         </span>
                       )}
                     </li>
                   );
                 })}
                 {services.length === 0 ? (
-                  <li className="flex items-center gap-2 text-sm text-slate-500">
+                  <li className="flex items-center gap-2 text-sm text-[var(--muted)]">
                     <MinusCircle className="h-4 w-4" /> No services reported
                   </li>
                 ) : null}
@@ -224,7 +263,7 @@ export default function SystemPage() {
             </div>
           </Card>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--muted)]">
             Last checked {new Date(ready.timestamp).toLocaleString()} · The
             readiness endpoint reports connectivity to PostgreSQL, Redis and
             MinIO; a degraded status does not necessarily block all features.

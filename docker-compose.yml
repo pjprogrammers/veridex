@@ -38,7 +38,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,6 +79,11 @@ services:
         condition: service_healthy
     volumes:
       - ./services/api:/app
+      # AI/CV showcase: mount the standalone `ai` package into the API image so
+      # /ai/v1 routes can import it. The heavy deps (PaddleOCR/InsightFace) come
+      # from requirements-ai.txt, which the API Dockerfile must install for the
+      # showcase to run inside Docker (localhost already has them in .venv).
+      - ./ai:/app/ai
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 10s

@@ -32,20 +32,27 @@ async def readiness_check():
     """
     services: dict[str, str] = {}
 
-    # PostgreSQL
+    # Database. Standalone SQLite mode is supported, so use the configured
+    # SQLAlchemy URL instead of assuming PostgreSQL is always active.
     try:
-        import asyncpg
-        conn = await asyncpg.connect(
-            host=settings.POSTGRES_HOST,
-            port=settings.POSTGRES_PORT,
-            database=settings.POSTGRES_DB,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-        )
-        await conn.close()
-        services["postgres"] = "ok"
+        if settings.database_url.startswith("sqlite"):
+            from sqlalchemy import text
+
+            from app.core.database import engine
+
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            services["database"] = "ok"
+        else:
+            import asyncpg
+
+            conn = await asyncpg.connect(
+                dsn=settings.database_url.replace("postgresql+asyncpg://", "postgresql://", 1),
+            )
+            await conn.close()
+            services["postgres"] = "ok"
     except Exception:
-        services["postgres"] = "error"
+        services["database" if settings.database_url.startswith("sqlite") else "postgres"] = "error"
 
     # Redis
     try:
@@ -65,8 +72,10 @@ async def readiness_check():
     try:
         from app.core.storage import get_minio_client
         client = get_minio_client()
-        client.bucket_exists(settings.MINIO_BUCKET)
-        services["minio"] = "ok"
+        if client.bucket_exists(settings.MINIO_BUCKET):
+            services["minio"] = "ok"
+        else:
+            services["minio"] = "error"
     except Exception:
         services["minio"] = "error"
 

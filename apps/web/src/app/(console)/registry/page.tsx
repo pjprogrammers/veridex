@@ -21,18 +21,18 @@ import {
   Skeleton,
   Spinner,
 } from "@/components/ui";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 function statusTone(status: string): string {
   if (status === "valid")
-    return "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
+    return "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40";
   if (
     status === "reported_stolen" ||
     status === "blacklisted" ||
     status === "suspended"
   )
-    return "bg-red-50 text-red-700 ring-red-600/20";
-  return "bg-amber-50 text-amber-700 ring-amber-600/20";
+    return "bg-neutral-200/80 text-black ring-neutral-400/40";
+  return "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40";
 }
 
 const REGISTRY_STATUSES = [
@@ -42,6 +42,62 @@ const REGISTRY_STATUSES = [
   "expired",
   "suspended",
 ];
+
+const REGISTRY_STAT_DOTS: Record<string, string> = {
+  valid: "bg-neutral-500",
+  flagged: "bg-black",
+  pending: "bg-neutral-500",
+};
+
+const FLAGGED_STATUSES = new Set([
+  "reported_stolen",
+  "blacklisted",
+  "suspended",
+]);
+const PENDING_STATUSES = new Set(["expired"]);
+
+function registryStats(entries: RegistryEntry[]) {
+  const total = entries.length;
+  const valid = entries.filter((e) => e.status === "valid").length;
+  const flagged = entries.filter((e) => FLAGGED_STATUSES.has(e.status)).length;
+  const pending = entries.filter((e) => PENDING_STATUSES.has(e.status)).length;
+  return { total, valid, flagged, pending };
+}
+
+function RegistryStatCard({
+  label,
+  value,
+  dot,
+  sublabel,
+}: {
+  label: string;
+  value: number;
+  dot: string;
+  sublabel?: string;
+}) {
+  return (
+    <div className="card-hover rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
+        {label}
+      </p>
+      <div className="mt-2 flex items-center gap-2">
+        <span className={cn("h-2.5 w-2.5 rounded-full", dot)} />
+        <span className="text-3xl font-bold tracking-tight text-[var(--text)] animate-count-up">
+          {value.toLocaleString()}
+        </span>
+      </div>
+      {sublabel ? (
+        <p className="mt-1 text-[11px] text-[var(--muted)]">{sublabel}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function dotFor(entryStatus: string) {
+  if (entryStatus === "valid") return REGISTRY_STAT_DOTS.valid;
+  if (FLAGGED_STATUSES.has(entryStatus)) return REGISTRY_STAT_DOTS.flagged;
+  return REGISTRY_STAT_DOTS.pending;
+}
 
 export default function RegistryPage() {
   const { user } = useAuth();
@@ -135,11 +191,11 @@ export default function RegistryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in-up">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Registry</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Registry</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
             Synthetic document registry (police / immigration / blacklist).
           </p>
         </div>
@@ -149,6 +205,22 @@ export default function RegistryPage() {
       </div>
 
       {error ? <Alert title="Request failed">{error}</Alert> : null}
+
+      {entries ? (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {(() => {
+            const s = registryStats(entries);
+            return (
+              <>
+                <RegistryStatCard label="Total entries" value={s.total} dot="bg-neutral-500" />
+                <RegistryStatCard label="Valid" value={s.valid} dot={dotFor("valid")} />
+                <RegistryStatCard label="Flagged" value={s.flagged} dot={dotFor("reported_stolen")} sublabel="stolen / blacklisted / suspended" />
+                <RegistryStatCard label="Pending" value={s.pending} dot={dotFor("expired")} sublabel="expired" />
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader
@@ -172,31 +244,31 @@ export default function RegistryPage() {
           </Button>
         </form>
         {lookupResult ? (
-          <div className="border-t border-slate-100 px-4 py-3">
+          <div className="border-t border-[var(--border)] px-4 py-3">
             {lookupResult.found ? (
               <div className="space-y-2">
                 {(lookupResult.entries ?? []).map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                    className="flex flex-wrap items-center gap-3 rounded-lg bg-[#f6f7fb] px-3 py-2 text-sm"
                   >
                     <Badge className={statusTone(entry.status)}>
                       {entry.status}
                     </Badge>
-                    <span className="font-medium text-slate-800">
+                    <span className="font-medium text-[var(--text)]">
                       {entry.registry_type}
                     </span>
-                    <span className="font-mono text-slate-600">
+                    <span className="font-mono text-[var(--text)]">
                       {entry.document_number}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-[var(--muted)]">
                       {entry.holder_name ?? "no holder"}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-600">{lookupResult.message}</div>
+              <div className="text-sm text-[var(--text)]">{lookupResult.message}</div>
             )}
           </div>
         ) : null}
@@ -241,36 +313,42 @@ export default function RegistryPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-xs text-slate-500">
-                  <th className="px-5 py-3 font-medium">Type</th>
-                  <th className="px-5 py-3 font-medium">Document number</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Holder</th>
-                  <th className="px-5 py-3 font-medium">Country</th>
-                  <th className="px-5 py-3 font-medium">Created</th>
+                <tr className="border-b border-[var(--border)] bg-[#f6f7fb]">
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Type</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Document number</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Status</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Holder</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Country</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {entries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 text-slate-700">
+              <tbody className="divide-y divide-[var(--border)]">
+                {entries.map((entry, idx) => (
+                  <tr
+                    key={entry.id}
+                    className={cn(
+                      "table-row-alt transition-colors hover:bg-neutral-100/70",
+                      idx % 2 === 1 && "bg-[#f8f9fc]",
+                    )}
+                  >
+                    <td className="px-6 py-3.5 text-[var(--text)]">
                       {entry.registry_type}
                     </td>
-                    <td className="px-5 py-3 font-mono text-slate-900">
+                    <td className="px-6 py-3.5 font-mono text-[var(--text)]">
                       {entry.document_number}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-6 py-3.5">
                       <Badge className={statusTone(entry.status)}>
                         {entry.status}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3 text-slate-600">
+                    <td className="px-6 py-3.5 text-[var(--text)]">
                       {entry.holder_name ?? "—"}
                     </td>
-                    <td className="px-5 py-3 text-slate-600">
+                    <td className="px-6 py-3.5 text-[var(--text)]">
                       {entry.issuing_country ?? "—"}
                     </td>
-                    <td className="px-5 py-3 text-xs text-slate-400">
+                    <td className="px-6 py-3.5 text-xs text-[var(--muted)]">
                       {formatDate(entry.created_at)}
                     </td>
                   </tr>
@@ -282,12 +360,12 @@ export default function RegistryPage() {
       </Card>
 
       {createOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--dark)]/50 p-4">
           <form
             onSubmit={doCreate}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-[var(--card)] p-6 shadow-2xl text-[var(--text)] border border-[var(--border)]"
           >
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--text)]">
               Add registry entry
             </h2>
             <div className="mt-4 space-y-4">

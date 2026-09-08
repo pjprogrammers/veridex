@@ -27,27 +27,27 @@ export function formatBytes(bytes: number | null | undefined): string {
 }
 
 export const RISK_STYLES: Record<RiskLevel, string> = {
-  LOW: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  MEDIUM: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  HIGH: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  CRITICAL: "bg-red-50 text-red-700 ring-red-600/20",
-  UNKNOWN: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  LOW: "bg-neutral-200/70 text-neutral-700 ring-neutral-400/40",
+  MEDIUM: "bg-neutral-400/70 text-neutral-100 ring-neutral-500/40",
+  HIGH: "bg-neutral-700/80 text-white ring-neutral-800/40",
+  CRITICAL: "bg-black text-white ring-neutral-800/60",
+  UNKNOWN: "bg-neutral-100 text-neutral-500 ring-neutral-300",
 };
 
 export const RISK_BAR: Record<RiskLevel, string> = {
-  LOW: "bg-emerald-500",
-  MEDIUM: "bg-amber-500",
-  HIGH: "bg-orange-500",
-  CRITICAL: "bg-red-500",
-  UNKNOWN: "bg-slate-400",
+  LOW: "bg-neutral-400",
+  MEDIUM: "bg-neutral-500",
+  HIGH: "bg-neutral-700",
+  CRITICAL: "bg-black",
+  UNKNOWN: "bg-neutral-300",
 };
 
 export const STATUS_STYLES: Record<CaseStatus, string> = {
-  in_review: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  under_examination: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
-  cleared: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  flagged: "bg-red-50 text-red-700 ring-red-600/20",
-  closed: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  in_review: "bg-neutral-200/70 text-neutral-700 ring-neutral-400/40",
+  under_examination: "bg-neutral-400/70 text-neutral-100 ring-neutral-500/40",
+  cleared: "bg-neutral-100 text-neutral-600 ring-neutral-300",
+  flagged: "bg-black text-white ring-neutral-800/60",
+  closed: "bg-neutral-100 text-neutral-400 ring-neutral-300",
 };
 
 export const STATUS_LABELS: Record<CaseStatus, string> = {

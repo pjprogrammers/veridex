@@ -6,6 +6,6 @@ venv/
 .mypy_cache/
 .ruff_cache/
 tests/
-alembic/
 *.log
 .env
+*.db

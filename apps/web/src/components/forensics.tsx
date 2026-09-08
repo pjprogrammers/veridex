@@ -9,21 +9,21 @@ import { Badge, Button, Card, EmptyState, Spinner, StatDisplay } from "@/compone
 import { cn } from "@/lib/utils";
 
 const SEVERITY_STYLES: Record<ForensicSeverity, string> = {
-  LOW: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  MEDIUM: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  HIGH: "bg-red-50 text-red-700 ring-red-600/20",
+  LOW: "bg-neutral-200/70 text-neutral-700 ring-neutral-400/40",
+  MEDIUM: "bg-neutral-400/70 text-neutral-100 ring-neutral-500/40",
+  HIGH: "bg-black text-white ring-neutral-800/60",
 };
 
 const LEVEL_STYLES: Record<ForensicResult["level"], string> = {
-  NONE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  LOW: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  MEDIUM: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  HIGH: "bg-red-50 text-red-700 ring-red-600/20",
+  NONE: "bg-neutral-200/70 text-neutral-700 ring-neutral-400/40",
+  LOW: "bg-neutral-200/70 text-neutral-700 ring-neutral-400/40",
+  MEDIUM: "bg-neutral-400/70 text-neutral-100 ring-neutral-500/40",
+  HIGH: "bg-black text-white ring-neutral-800/60",
 };
 
 const STATUS_STYLES: Record<ForensicResult["forensic_status"], string> = {
-  sufficient_evidence: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  insufficient_evidence: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  sufficient_evidence: "bg-neutral-400/70 text-neutral-100 ring-neutral-500/40",
+  insufficient_evidence: "bg-neutral-100 text-neutral-500 ring-neutral-300",
 };
 
 export function ForensicsAnalysis({ documentId }: { documentId: string }) {
@@ -51,9 +51,9 @@ export function ForensicsAnalysis({ documentId }: { documentId: string }) {
 
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <Radar className="h-4 w-4 text-indigo-500" aria-hidden />
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <Radar className="h-4 w-4 text-neutral-500" aria-hidden />
           Document Forensics
         </h2>
         {result ? (
@@ -70,7 +70,7 @@ export function ForensicsAnalysis({ documentId }: { documentId: string }) {
       <div className="space-y-5 p-5">
         {!result ? (
           loading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
               <Spinner /> Analyzing the document for manipulation indicators…
             </div>
           ) : (
@@ -90,29 +90,29 @@ export function ForensicsAnalysis({ documentId }: { documentId: string }) {
           )
         ) : (
           <>
-            <div className="flex items-center gap-4 rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-full",
                     result.tampering_score === null
-                      ? "bg-slate-100 text-slate-500"
+                      ? "bg-neutral-100 text-neutral-400"
                       : result.tampering_score >= 0.55
-                        ? "bg-red-100 text-red-600"
+                        ? "bg-black/10 text-black"
                         : result.tampering_score >= 0.3
-                          ? "bg-amber-100 text-amber-600"
-                          : "bg-emerald-100 text-emerald-600",
+                          ? "bg-neutral-500/20 text-neutral-700"
+                          : "bg-neutral-200/70 text-neutral-600",
                   )}
                 >
                   <ShieldAlert className="h-6 w-6" aria-hidden />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     Tampering indicator
                   </div>
                   {result.tampering_score === null ? (
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold text-slate-700">
+                      <span className="text-sm font-semibold text-[var(--text)]">
                         Insufficient validated evidence
                       </span>
                       <Badge className={STATUS_STYLES[result.forensic_status]}>
@@ -121,7 +121,7 @@ export function ForensicsAnalysis({ documentId }: { documentId: string }) {
                     </div>
                   ) : (
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-semibold text-slate-900">
+                      <span className="text-2xl font-semibold text-[var(--text)]">
                         {Math.round(result.tampering_score * 100)}%
                       </span>
                       <Badge className={tone(result.level)}>{result.level}</Badge>
@@ -130,58 +130,58 @@ export function ForensicsAnalysis({ documentId }: { documentId: string }) {
                 </div>
               </div>
               {result.explanation ? (
-                <p className="flex-1 text-sm text-slate-600">{result.explanation}</p>
+                <p className="flex-1 text-sm text-[var(--muted)]">{result.explanation}</p>
               ) : null}
             </div>
 
             {result.detectors.length > 0 ? (
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   Detector signals
                 </div>
                 <div className="space-y-3">
                   {result.detectors.map((d) => (
                     <div
                       key={d.detector_id}
-                      className="rounded-xl border border-slate-100 p-3"
+                      className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-slate-800">
+                          <span className="text-sm font-medium text-[var(--text)]">
                             {d.detector_name}
                           </span>
                           <Badge className={SEVERITY_STYLES[d.severity] ?? SEVERITY_STYLES.LOW}>
                             {d.severity}
                           </Badge>
                         </div>
-                        <span className="text-sm font-semibold text-slate-700">
+                        <span className="text-sm font-semibold text-[var(--text)]">
                           {Math.round(d.score * 100)}%
                         </span>
                       </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div className="progress-track mt-2 h-2">
                         <div
                           className={cn(
-                            "h-full rounded-full transition-all",
+                            "progress-fill",
                             d.score >= 0.55
-                              ? "bg-red-500"
+                              ? "bg-black"
                               : d.score >= 0.3
-                                ? "bg-amber-500"
-                                : "bg-emerald-500",
+                                ? "bg-neutral-500"
+                                : "bg-neutral-400",
                           )}
                           style={{ width: `${Math.round(d.score * 100)}%` }}
                         />
                       </div>
                       {d.description ? (
-                        <p className="mt-2 text-sm text-slate-600">{d.description}</p>
+                        <p className="mt-2 text-sm text-[var(--muted)]">{d.description}</p>
                       ) : null}
                       {d.regions && d.regions.length > 0 ? (
                         <div className="mt-2">
-                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                             Suspicious regions ({d.regions.length})
                           </div>
                           <ul className="mt-1 space-y-1">
                             {d.regions.map((r, i) => (
-                              <li key={i} className="text-xs text-slate-500">
+                              <li key={i} className="text-xs text-[var(--muted)]">
                                 {String(r.reason ?? "region")} — x:{coord(r.x)} y:
                                 {coord(r.y)} w:{coord(r.w)} h:{coord(r.h)}
                               </li>
@@ -235,8 +235,8 @@ function AlertInline({
       className={cn(
         "mb-4 rounded-lg border p-3 text-sm",
         tone === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-blue-200 bg-blue-50 text-blue-800",
+          ? "border-neutral-300 bg-neutral-100 text-neutral-800"
+          : "border-neutral-300 bg-neutral-100 text-neutral-700",
       )}
     >
       <div className="font-semibold">{title}</div>

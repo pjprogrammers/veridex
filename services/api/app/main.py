@@ -10,7 +10,17 @@ from app.core.logging import setup_logging
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_id import RequestIDMiddleware
-from app.routes import audit, auth, cases, documents, health, ocr, registry, verification
+from app.routes import (
+    ai,
+    audit,
+    auth,
+    cases,
+    documents,
+    health,
+    ocr,
+    registry,
+    verification,
+)
 
 settings = get_settings()
 setup_logging()
@@ -73,6 +83,7 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(verification.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
+app.include_router(ai.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

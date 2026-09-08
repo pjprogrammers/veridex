@@ -6,10 +6,7 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "rounded-xl border border-slate-200 bg-white shadow-sm",
-        className,
-      )}
+      className={cn("card rounded-xl border border-[var(--border)] bg-[var(--card)]", className)}
       {...props}
     />
   );
@@ -25,11 +22,11 @@ export function CardHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <h2 className="text-[14.5px] font-bold text-[var(--text)]">{title}</h2>
         {subtitle ? (
-          <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">{subtitle}</p>
         ) : null}
       </div>
       {action}
@@ -48,11 +45,11 @@ export function Button({
 }) {
   const variants = {
     primary:
-      "bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-indigo-300",
+      "bg-[var(--dark)] text-white hover:bg-[var(--dark-2)] disabled:opacity-50",
     secondary:
-      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:text-slate-400",
-    danger: "bg-red-600 text-white hover:bg-red-500 disabled:bg-red-300",
-    ghost: "text-slate-600 hover:bg-slate-100 disabled:text-slate-400",
+      "border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-neutral-100 disabled:text-[var(--muted)]",
+    danger: "bg-black text-white hover:opacity-90 disabled:opacity-50",
+    ghost: "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 disabled:text-neutral-400",
   };
   const sizes = {
     sm: "h-8 px-3 text-xs",
@@ -61,7 +58,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br font-medium transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
         className,
@@ -78,7 +75,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ring-1 ring-inset",
         className,
       )}
       {...props}
@@ -93,7 +90,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+        "h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm text-[var(--text)] placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300/40 transition-colors",
         className,
       )}
       {...props}
@@ -108,7 +105,7 @@ export function Select({
   return (
     <select
       className={cn(
-        "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+        "h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm text-[var(--text)] focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-300/40 transition-colors",
         className,
       )}
       {...props}
@@ -122,7 +119,7 @@ export function Label({
 }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn("mb-1 block text-xs font-medium text-slate-600", className)}
+      className={cn("mb-1 block text-xs font-medium text-[var(--muted)]", className)}
       {...props}
     />
   );
@@ -163,14 +160,19 @@ export function Alert({
   children?: React.ReactNode;
 }) {
   const tones = {
-    error: "border-red-200 bg-red-50 text-red-800",
-    info: "border-blue-200 bg-blue-50 text-blue-800",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    error: "border-neutral-300 bg-neutral-100 text-neutral-800",
+    info: "border-neutral-300 bg-neutral-100 text-neutral-700",
+    success: "border-neutral-300 bg-neutral-100 text-neutral-700",
+  };
+  const titles = {
+    error: "text-black",
+    info: "text-neutral-800",
+    success: "text-neutral-800",
   };
   return (
     <div className={cn("rounded-lg border px-4 py-3 text-sm", tones[tone])}>
-      {title ? <div className="font-semibold">{title}</div> : null}
-      {children ? <div className="mt-0.5 text-xs opacity-90">{children}</div> : null}
+      {title ? <div className={cn("font-semibold", titles[tone])}>{title}</div> : null}
+      {children ? <div className="mt-0.5 text-xs opacity-90 text-[var(--text)]">{children}</div> : null}
     </div>
   );
 }
@@ -183,17 +185,15 @@ export function EmptyState({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-12 text-center">
-      <div className="text-sm font-medium text-slate-700">{title}</div>
-      {hint ? <div className="mt-1 text-xs text-slate-500">{hint}</div> : null}
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] py-12 text-center">
+      <div className="text-sm font-medium text-[var(--muted)]">{title}</div>
+      {hint ? <div className="mt-1 text-xs text-[var(--muted)]/80">{hint}</div> : null}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn("animate-pulse rounded-md bg-slate-200", className)} />
-  );
+  return <div className={cn("micro-shimmer rounded-lg", className)} />;
 }
 
 export function Checkbox({
@@ -206,12 +206,12 @@ export function Checkbox({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text)]">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        className="h-4 w-4 rounded border-neutral-400 text-neutral-700 focus:ring-neutral-300/40"
       />
       {label}
     </label>
@@ -227,14 +227,14 @@ export function Progress({
 }) {
   return (
     <div
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-slate-200", className)}
+      className={cn("progress-track h-2.5", className)}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(value)}
     >
       <div
-        className="h-full rounded-full bg-indigo-500 transition-all"
+        className="progress-fill"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
@@ -252,10 +252,10 @@ export function StatDisplay({
 }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-1 text-sm sm:grid-cols-1">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-right font-medium text-slate-800 sm:text-left">
+      <span className="text-[var(--muted)]">{label}</span>
+      <span className="text-right font-medium text-[var(--text)] sm:text-left">
         {value}
-        {suffix ? <span className="ml-1 text-xs text-slate-400">{suffix}</span> : null}
+        {suffix ? <span className="ml-1 text-xs text-[var(--muted)]">{suffix}</span> : null}
       </span>
     </div>
   );

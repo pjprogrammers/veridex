@@ -33,9 +33,9 @@ interface ForensicsResult {
 
 function severityBadgeCls(severity: string): string {
   const s = severity.toUpperCase();
-  if (s === "HIGH") return "bg-red-50 text-red-700 ring-red-600/20";
-  if (s === "MEDIUM") return "bg-amber-50 text-amber-700 ring-amber-600/20";
-  return "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
+  if (s === "HIGH") return "bg-neutral-200/80 text-black ring-neutral-400/40";
+  if (s === "MEDIUM") return "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40";
+  return "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40";
 }
 
 export default function ForensicsPage() {
@@ -100,7 +100,7 @@ function ForensicsInner() {
         <Alert title="Could not load case">{error}</Alert>
         <Link
           href={`/cases/${caseId}`}
-          className="mt-4 inline-block text-sm text-indigo-600 hover:text-indigo-500"
+          className="mt-4 inline-block text-sm text-neutral-500 hover:text-black"
         >
           ← Back to case
         </Link>
@@ -125,18 +125,18 @@ function ForensicsInner() {
   const flags = forensics?.flags ?? [];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-in-up">
       <div>
         <Link
           href={`/cases/${caseId}`}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+          className="text-xs font-medium text-neutral-500 hover:text-black"
         >
           ← Back to case
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
           Forensic Analysis — {caseDetail.case_number}
         </h1>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <p className="mt-0.5 text-sm text-[var(--muted)]">
           Tampering heuristics applied to the selected document image.
         </p>
       </div>
@@ -162,7 +162,7 @@ function ForensicsInner() {
             />
           </div>
         ) : (
-          <ul className="divide-y divide-slate-50">
+          <ul className="divide-y divide-[var(--border)]">
             {caseDetail.documents.map((doc) => {
               const active = doc.id === selectedDocId;
               return (
@@ -171,17 +171,17 @@ function ForensicsInner() {
                     type="button"
                     className={cn(
                       "flex w-full items-center justify-between px-5 py-3 text-left transition-colors",
-                      active ? "bg-indigo-50/60" : "hover:bg-slate-50",
+                      active ? "bg-neutral-200/60" : "hover:bg-[#f6f7fb]",
                     )}
                     onClick={() => {
                       setSelectedDocId(doc.id);
                       setResult(null);
                     }}
                   >
-                    <span className="text-sm font-medium text-slate-800">
+                    <span className="text-sm font-medium text-[var(--text)]">
                       {doc.document_type || "Document"}
                     </span>
-                    <span className="text-xs text-slate-400">{doc.mime_type}</span>
+                    <span className="text-xs text-[var(--muted)]">{doc.mime_type}</span>
                   </button>
                 </li>
               );
@@ -193,8 +193,8 @@ function ForensicsInner() {
       {!result && !busy ? (
         <Card>
           <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <Radar className="h-8 w-8 text-slate-300" aria-hidden />
-            <p className="text-sm text-slate-500">
+            <Radar className="h-8 w-8 text-[var(--muted)]" aria-hidden />
+            <p className="text-sm text-[var(--muted)]">
               Select a document and run forensics to see tamper-evidence here.
             </p>
           </div>
@@ -203,7 +203,7 @@ function ForensicsInner() {
 
       {busy ? (
         <Card>
-          <div className="flex items-center gap-3 p-6 text-sm text-slate-500">
+          <div className="flex items-center gap-3 p-6 text-sm text-[var(--muted)]">
             <Spinner /> Running forensic heuristics…
           </div>
         </Card>
@@ -215,11 +215,11 @@ function ForensicsInner() {
             title="Forensic evidence"
             action={
               evidenceStatus === "sufficient_evidence" ? (
-                <Badge className="bg-orange-50 text-orange-700 ring-orange-600/20">
+                <Badge className="bg-neutral-400/30 text-neutral-800 ring-neutral-400/40">
                   VALIDATED SIGNAL
                 </Badge>
               ) : (
-                <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">
+                <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
                   EXPERIMENTAL ONLY
                 </Badge>
               )
@@ -233,23 +233,23 @@ function ForensicsInner() {
                   className={cn(
                     "flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-xl font-bold",
                     forensics.tampering_score > 0.55
-                      ? "border-orange-600 text-orange-600"
+                      ? "border-neutral-500 text-neutral-800"
                       : forensics.tampering_score > 0.3
-                        ? "border-amber-500 text-amber-600"
-                        : "border-emerald-500 text-emerald-600",
+                        ? "border-neutral-500 text-neutral-800"
+                        : "border-neutral-500 text-neutral-600",
                   )}
                 >
                   {Math.round(forensics.tampering_score * 100)}
                 </div>
               ) : (
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-slate-300 text-xl font-bold text-slate-400">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-[var(--border)] text-xl font-bold text-[var(--muted)]">
                   —
                 </div>
               )}
               <div className="flex-1">
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="font-medium text-slate-700">Tamper score</span>
-                  <span className="text-slate-500">
+                  <span className="font-medium text-[var(--text)]">Tamper score</span>
+                  <span className="text-[var(--muted)]">
                     {evidenceStatus === "sufficient_evidence"
                       ? "validated evidence"
                       : "experimental signal only"}
@@ -257,15 +257,15 @@ function ForensicsInner() {
                 </div>
                 {forensics.tampering_score !== null &&
                 forensics.tampering_score !== undefined ? (
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#f6f7fb]">
                     <div
                       className={cn(
                         "h-full rounded-full",
                         forensics.tampering_score > 0.55
-                          ? "bg-orange-500"
+                          ? "bg-neutral-700"
                           : forensics.tampering_score > 0.3
-                            ? "bg-amber-500"
-                            : "bg-emerald-500",
+                            ? "bg-neutral-500"
+                            : "bg-neutral-500",
                       )}
                       style={{
                         width: `${Math.round(forensics.tampering_score * 100)}%`,
@@ -273,7 +273,7 @@ function ForensicsInner() {
                     />
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-[var(--text)]">
                     No validated forensic evidence is currently available. Raw
                     experimental signals below are for research/debugging only
                     and are not a tampering verdict.
@@ -284,27 +284,27 @@ function ForensicsInner() {
 
             {flags.length > 0 ? (
               <div className="mt-5">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   Suspicious regions / signals
                 </div>
                 <ul className="space-y-2">
                   {flags.map((f, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                      className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[#f6f7fb] px-3 py-2 text-sm"
                     >
                       <div>
-                        <div className="font-medium text-slate-800">
+                        <div className="font-medium text-[var(--text)]">
                           {String(f.signal ?? "signal")}
                         </div>
                         {f.description ? (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[var(--muted)]">
                             {String(f.description)}
                           </div>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-[var(--muted)]">
                           {Math.round(Number(f.score ?? 0) * 100)}%
                         </span>
                         <Badge
@@ -320,13 +320,13 @@ function ForensicsInner() {
             ) : null}
 
             {forensics.summary ? (
-              <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+              <div className="mt-4 rounded-lg bg-[#f6f7fb] p-3 text-sm text-[var(--text)]">
                 {forensics.summary}
               </div>
             ) : null}
 
             {forensics.evidence_note ? (
-              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="mt-4 rounded-lg border border-neutral-400/40 bg-neutral-300/40 p-3 text-sm text-neutral-300">
                 {forensics.evidence_note}
               </div>
             ) : null}

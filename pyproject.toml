@@ -1,0 +1,33 @@
+# VERIDEX — AI / CV layer (independent Python package at the repo root).
+# Lint, typecheck and test configuration for the standalone `ai` package and
+# the deterministic test suite in `tests/`.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "cv2.*",
+    "paddle",
+    "paddle.*",
+    "paddleocr.*",
+    "paddleocr",
+    "paddlex.*",
+    "insightface.*",
+    "onnxruntime.*",
+]
+ignore_missing_imports = true

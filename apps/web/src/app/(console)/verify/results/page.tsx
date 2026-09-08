@@ -26,6 +26,7 @@ import type {
   Verdict,
 } from "@/lib/types";
 import { RiskBadge, RiskGauge } from "@/components/risk";
+import { RiskReasons, RiskRecommendations } from "@/components/risk-reasons";
 import { ForensicsAnalysis } from "@/components/forensics";
 import {
   Alert,
@@ -61,6 +62,7 @@ function ResultsInner() {
   const params = useSearchParams();
   const caseId = params.get("case") ?? "";
   const docId = params.get("doc") ?? "";
+  const demoKey = params.get("demo") ?? "";
 
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
   const [report, setReport] = useState<VerificationReport | null>(null);
@@ -157,7 +159,7 @@ function ResultsInner() {
     return (
       <div className="mx-auto max-w-5xl space-y-4">
         <Skeleton className="h-10 w-64" />
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
           <Fingerprint className="h-4 w-4 animate-pulse" /> Loading report…
         </div>
         <Skeleton className="h-32 w-full" />
@@ -174,7 +176,7 @@ function ResultsInner() {
         </Alert>
         <Link
           href={`/cases/${caseId}`}
-          className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-500"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-black"
         >
           ← Back to case
         </Link>
@@ -189,11 +191,11 @@ function ResultsInner() {
         <div>
           <Link
             href={`/cases/${caseId}`}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-xs font-medium text-neutral-500 hover:text-black"
           >
             ← Back to case {caseDetail?.case_number ?? ""}
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
             Verification Results
           </h1>
         </div>
@@ -225,7 +227,7 @@ function ResultsInner() {
         </Alert>
         <Link
           href="/verify"
-          className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-500"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-black"
         >
           ← New verification
         </Link>
@@ -240,20 +242,20 @@ function ResultsInner() {
         <div>
           <Link
             href={`/cases/${caseId}`}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-xs font-medium text-neutral-500 hover:text-black"
           >
             ← Back to case {caseDetail?.case_number ?? ""}
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
             Verification Results
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-[var(--muted)]">
             {caseDetail?.case_number} · {formatDate(caseDetail?.created_at)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {running ? (
-            <span className="inline-flex items-center gap-2 text-sm text-slate-500">
+            <span className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
               <Spinner /> Re-running…
             </span>
           ) : null}
@@ -261,6 +263,7 @@ function ResultsInner() {
             <RefreshCw className="h-4 w-4" aria-hidden />
             Re-run verification
           </Button>
+          {demoKey ? <DemoBadge demoKey={demoKey} /> : null}
           <DecisionBadge decision={deriveDecision(report)} />
         </div>
       </div>
@@ -288,7 +291,7 @@ function ResultsInner() {
       <ForensicsAnalysis documentId={docId} />
 
       <Alert tone="info" title="Decision-support disclaimer">
-        {report.risk?.explanation} This is a decision-support analysis. It does
+        This is a decision-support analysis. It does
         not prove authenticity or fraud. Manual review by an officer is required
         before any enforcement action.
       </Alert>
@@ -321,27 +324,44 @@ function deriveCaseStatus(report: VerificationReport): string {
 const DECISION_STYLES: Record<Verdict, { label: string; cls: string }> = {
   CLEAR: {
     label: "CLEAR",
-    cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    cls: "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40",
   },
   MANUAL_REVIEW: {
     label: "MANUAL REVIEW",
-    cls: "bg-amber-50 text-amber-700 ring-amber-600/20",
+    cls: "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40",
   },
   HIGH_RISK_ALERT: {
     label: "HIGH-RISK ALERT",
-    cls: "bg-red-50 text-red-700 ring-red-600/20",
+    cls: "bg-neutral-200/80 text-black ring-neutral-400/40",
   },
   INCONCLUSIVE: {
     label: "INCONCLUSIVE",
-    cls: "bg-slate-100 text-slate-600 ring-slate-500/20",
+    cls: "bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]",
   },
 };
 
 function DecisionBadge({ decision }: { decision: Verdict }) {
   const s = DECISION_STYLES[decision];
   return (
-    <Badge className={cn("px-3 py-1 text-xs font-semibold", s.cls)}>
+    <Badge className={cn("micro-badge-in px-3 py-1 text-xs font-semibold", s.cls)}>
       {s.label}
+    </Badge>
+  );
+}
+
+const DEMO_LABELS: Record<string, string> = {
+  genuine: "Genuine",
+  tampered: "Tampered",
+  expired: "Expired",
+  blacklisted: "Blacklisted",
+  impersonation: "Impersonation",
+};
+
+function DemoBadge({ demoKey }: { demoKey: string }) {
+  const label = DEMO_LABELS[demoKey] ?? demoKey;
+  return (
+    <Badge className="bg-neutral-100 text-neutral-600 ring-neutral-300">
+      Demo · {label}
     </Badge>
   );
 }
@@ -363,8 +383,8 @@ function SectionCard({
 }) {
   return (
     <Card className="flex flex-col">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
           {icon}
           {title}
         </h2>
@@ -380,9 +400,9 @@ function RiskSection({ report }: { report: VerificationReport }) {
   const factors = Array.isArray(risk?.factors) ? risk.factors : [];
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <Radar className="h-4 w-4 text-indigo-500" aria-hidden />
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <Radar className="h-4 w-4 text-neutral-500" aria-hidden />
           Risk Assessment
         </h2>
         <RiskBadge level={risk?.level ?? "UNKNOWN"} />
@@ -392,37 +412,11 @@ function RiskSection({ report }: { report: VerificationReport }) {
           score={risk?.score ?? 0}
           level={risk?.level ?? "UNKNOWN"}
         />
-        {factors.length > 0 ? (
-          <div className="mt-5">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Reasons
-            </div>
-            <ul className="space-y-1.5">
-              {factors.map((f, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                >
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">
-                    {i + 1}
-                  </span>
-                  <span>
-                    {String(f.label ?? f.detail ?? `Factor ${i + 1}`)}
-                    {f.detail && f.label ? (
-                      <span className="ml-1 text-slate-500">— {String(f.detail)}</span>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {report.risk?.recommendations && report.risk.recommendations.length > 0 ? (
-          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-            <span className="font-semibold">Recommendations: </span>
-            {report.risk.recommendations.join(". ")}
-          </div>
-        ) : null}
+        <RiskReasons factors={factors} className="mt-5" />
+        <RiskRecommendations
+          recommendations={risk?.recommendations ?? []}
+          explanation={risk?.explanation}
+        />
       </div>
     </Card>
   );
@@ -435,31 +429,31 @@ function ClassificationSection({ classification }: { classification: Classificat
     .replace(/\b\w/g, (c) => c.toUpperCase());
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <FileSearch className="h-4 w-4 text-indigo-500" aria-hidden />
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <FileSearch className="h-4 w-4 text-neutral-500" aria-hidden />
           Detected Document
         </h2>
-        <Badge className="bg-indigo-50 text-indigo-700 ring-indigo-600/20">
+        <Badge className="bg-neutral-200/60 text-neutral-500 ring-neutral-400/40">
           {typeLabel}
         </Badge>
       </div>
       <div className="p-5 space-y-4">
         <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Confidence
           </div>
           <div className="flex items-center gap-3">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#f6f7fb]">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-400",
+                  pct >= 70 ? "bg-neutral-500" : pct >= 40 ? "bg-neutral-500" : "bg-black",
                 )}
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-sm font-medium text-slate-700">{pct}%</span>
+            <span className="text-sm font-medium text-[var(--text)]">{pct}%</span>
           </div>
         </div>
         <StatDisplay label="Method" value={classification.method} />
@@ -468,14 +462,14 @@ function ClassificationSection({ classification }: { classification: Classificat
         ) : null}
         {classification.warnings.length > 0 ? (
           <div>
-            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Warnings
             </div>
             <ul className="space-y-1.5">
               {classification.warnings.map((w, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-1.5 text-sm text-amber-700"
+                  className="flex items-center gap-2 rounded-lg bg-neutral-300/40 px-3 py-1.5 text-sm text-neutral-800"
                 >
                   <span className="font-medium">{w.replace(/_/g, " ")}</span>
                 </li>
@@ -506,9 +500,9 @@ function MRZSection({
     : null;
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <ScanLine className="h-4 w-4 text-indigo-500" aria-hidden />
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <ScanLine className="h-4 w-4 text-neutral-500" aria-hidden />
           MRZ Analysis
         </h2>
         <div className="flex items-center gap-2">
@@ -516,10 +510,10 @@ function MRZSection({
             <Badge
               className={
                 result.mrz.mrz_valid
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                  ? "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40"
                   : result.mrz.mrz_detected
-                    ? "bg-red-50 text-red-700 ring-red-600/20"
-                    : "bg-slate-100 text-slate-600 ring-slate-500/20"
+                    ? "bg-neutral-200/80 text-black ring-neutral-400/40"
+                    : "bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]"
               }
             >
               {validChip}
@@ -534,11 +528,11 @@ function MRZSection({
       <div className="space-y-5 p-5">
         {!result ? (
           loading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
               <Spinner /> Detecting and validating the machine-readable zone…
             </div>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[var(--muted)]">
               The machine-readable zone (MRZ) has not been extracted yet. Run
               MRZ analysis to detect, parse, and validate the ICAO 9303 zone.
             </p>
@@ -546,7 +540,7 @@ function MRZSection({
         ) : (
           <>
             {!result.mrz.mrz_detected ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--muted)]">
                 No dense MRZ region was detected in this document
                 {result.mrz.warnings.length > 0
                   ? ` (${result.mrz.warnings.join(", ")})`
@@ -561,18 +555,18 @@ function MRZSection({
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card className="!p-0 shadow-none">
-                    <div className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="border-b border-[var(--border)] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                       Parsed fields
                     </div>
                     <div className="p-4">
                       <table className="w-full text-sm">
                         <tbody>
                           {Object.entries(result.mrz.parsed_fields).map(([k, v]) => (
-                            <tr key={k} className="border-b border-slate-50 last:border-0">
-                              <td className="py-1.5 pr-3 text-slate-500">
+                            <tr key={k} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-1.5 pr-3 text-[var(--muted)]">
                                 {k.replace(/_/g, " ")}
                               </td>
-                              <td className="py-1.5 font-medium text-slate-800">{v || "—"}</td>
+                              <td className="py-1.5 font-medium text-[var(--text)]">{v || "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -581,28 +575,28 @@ function MRZSection({
                   </Card>
 
                   <Card className="!p-0 shadow-none">
-                    <div className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="border-b border-[var(--border)] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                       ICAO check digits
                     </div>
                     <div className="p-4">
                       <table className="w-full text-sm">
                         <tbody>
                           {Object.entries(result.mrz.check_digits).map(([k, v]) => (
-                            <tr key={k} className="border-b border-slate-50 last:border-0">
-                              <td className="py-1.5 pr-3 text-slate-500">
+                            <tr key={k} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-1.5 pr-3 text-[var(--muted)]">
                                 {k.replace(/_/g, " ")}
                               </td>
                               <td className="py-1.5 text-right">
                                 {v === true ? (
-                                  <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                                  <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">
                                     Valid
                                   </Badge>
                                 ) : v === false ? (
-                                  <Badge className="bg-red-50 text-red-700 ring-red-600/20">
+                                  <Badge className="bg-neutral-200/80 text-black ring-neutral-400/40">
                                     Invalid
                                   </Badge>
                                 ) : (
-                                  <span className="text-slate-400">—</span>
+                                  <span className="text-[var(--muted)]">—</span>
                                 )}
                               </td>
                             </tr>
@@ -615,10 +609,10 @@ function MRZSection({
 
                 {result.mrz.raw_mrz.length > 0 ? (
                   <details className="group">
-                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-indigo-600 hover:text-indigo-500">
+                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-neutral-500 hover:text-black">
                       View raw MRZ lines
                     </summary>
-                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
+                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-[#f6f7fb] p-3 text-xs text-[var(--text)]">
                       {result.mrz.raw_mrz.join("\n")}
                     </pre>
                   </details>
@@ -635,25 +629,25 @@ function MRZSection({
 function VisualMRZComparison({ comparison }: { comparison: MRZExtractionResponse["comparison"] }) {
   if (!comparison) return null;
   const severityStyles: Record<string, string> = {
-    NONE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-    LOW: "bg-amber-50 text-amber-700 ring-amber-600/20",
-    MEDIUM: "bg-orange-50 text-orange-700 ring-orange-600/20",
-    HIGH: "bg-red-50 text-red-700 ring-red-600/20",
+    NONE: "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40",
+    LOW: "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40",
+    MEDIUM: "bg-neutral-400/30 text-neutral-800 ring-neutral-400/40",
+    HIGH: "bg-neutral-200/80 text-black ring-neutral-400/40",
   };
   return (
-    <div className="rounded-xl border border-slate-100 p-4">
+    <div className="rounded-xl border border-[var(--border)] p-4">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Visual vs MRZ comparison
         </div>
         <Badge className={severityStyles[comparison.severity] ?? severityStyles.NONE!}>
           {comparison.severity}
         </Badge>
       </div>
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-100">
+      <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
               <th className="px-3 py-2 font-semibold">Field</th>
               <th className="px-3 py-2 font-semibold">Visual</th>
               <th className="px-3 py-2 font-semibold">MRZ</th>
@@ -662,17 +656,17 @@ function VisualMRZComparison({ comparison }: { comparison: MRZExtractionResponse
           </thead>
           <tbody>
             {comparison.comparisons.map((c) => (
-              <tr key={c.field_name} className="border-b border-slate-50 last:border-0">
-                <td className="px-3 py-2 text-slate-500">{c.field_name.replace(/_/g, " ")}</td>
-                <td className="px-3 py-2 text-slate-700">{c.visual_value || "—"}</td>
-                <td className="px-3 py-2 text-slate-700">{c.mrz_value || "—"}</td>
+              <tr key={c.field_name} className="border-b border-[var(--border)] last:border-0">
+                <td className="px-3 py-2 text-[var(--muted)]">{c.field_name.replace(/_/g, " ")}</td>
+                <td className="px-3 py-2 text-[var(--text)]">{c.visual_value || "—"}</td>
+                <td className="px-3 py-2 text-[var(--text)]">{c.mrz_value || "—"}</td>
                 <td className="px-3 py-2 text-right">
                   {c.verdict === "MATCH" ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">Match</Badge>
+                    <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">Match</Badge>
                   ) : c.verdict === "MISMATCH" ? (
-                    <Badge className="bg-red-50 text-red-700 ring-red-600/20">Mismatch</Badge>
+                    <Badge className="bg-neutral-200/80 text-black ring-neutral-400/40">Mismatch</Badge>
                   ) : (
-                    <span className="text-slate-400">N/A</span>
+                    <span className="text-[var(--muted)]">N/A</span>
                   )}
                 </td>
               </tr>
@@ -681,7 +675,7 @@ function VisualMRZComparison({ comparison }: { comparison: MRZExtractionResponse
         </table>
       </div>
       {comparison.severity_reasons.length > 0 ? (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-[var(--muted)]">
           Mismatch on: {comparison.severity_reasons.join(", ")}. Review required —
           OCR error or forgery may be present.
         </p>
@@ -694,13 +688,13 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
   const displayFields = ocr.fields.filter((f) => f.value);
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <Type className="h-4 w-4 text-indigo-500" aria-hidden />
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <Type className="h-4 w-4 text-neutral-500" aria-hidden />
           OCR Extraction
         </h2>
         {ocr.engine ? (
-          <Badge className="bg-slate-100 text-slate-700 ring-slate-500/20">
+          <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
             {ocr.engine}
           </Badge>
         ) : null}
@@ -708,24 +702,24 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
       <div className="p-5 space-y-5">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
           <div className="min-w-[240px] flex-1">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Average field confidence
             </div>
             <div className="flex items-center gap-3">
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#f6f7fb]">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
                     avgConfPct(ocr) >= 70
-                      ? "bg-emerald-500"
+                      ? "bg-neutral-500"
                       : avgConfPct(ocr) >= 40
-                        ? "bg-amber-500"
-                        : "bg-red-400",
+                        ? "bg-neutral-500"
+                        : "bg-black",
                   )}
                   style={{ width: `${avgConfPct(ocr)}%` }}
                 />
               </div>
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-[var(--text)]">
                 {avgConfPct(ocr)}%
               </span>
             </div>
@@ -739,18 +733,18 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
         </div>
 
         {displayFields.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--muted)]">
             No structured fields were extracted from this document.
           </p>
         ) : (
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Extracted fields
             </div>
-            <div className="overflow-hidden rounded-xl border border-slate-100">
+            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
                     <th className="px-3 py-2 font-semibold">Field</th>
                     <th className="px-3 py-2 font-semibold">Value</th>
                     <th className="px-3 py-2 text-right font-semibold">Confidence</th>
@@ -758,29 +752,29 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
                 </thead>
                 <tbody>
                   {displayFields.map((f, i) => (
-                    <tr key={`${f.field_name}-${i}`} className="border-b border-slate-50">
-                      <td className="px-3 py-2 text-slate-500">
+                    <tr key={`${f.field_name}-${i}`} className="border-b border-[var(--border)]">
+                      <td className="px-3 py-2 text-[var(--muted)]">
                         {f.field_name.replace(/_/g, " ")}
                       </td>
-                      <td className="px-3 py-2 font-medium text-slate-800">
+                      <td className="px-3 py-2 font-medium text-[var(--text)]">
                         {f.value}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-2">
-                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#f6f7fb]">
                             <div
                               className={cn(
                                 "h-full rounded-full",
                                 Math.round(f.confidence * 100) >= 70
-                                  ? "bg-emerald-500"
+                                  ? "bg-neutral-500"
                                   : Math.round(f.confidence * 100) >= 40
-                                    ? "bg-amber-500"
-                                    : "bg-red-400",
+                                    ? "bg-neutral-500"
+                                    : "bg-black",
                               )}
                               style={{ width: `${Math.round(f.confidence * 100)}%` }}
                             />
                           </div>
-                          <span className="w-10 text-right text-xs font-medium text-slate-600">
+                          <span className="w-10 text-right text-xs font-medium text-[var(--text)]">
                             {Math.round(f.confidence * 100)}%
                           </span>
                         </div>
@@ -795,10 +789,10 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
 
         {ocr.raw_text ? (
           <details className="group">
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-indigo-600 hover:text-indigo-500">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-neutral-500 hover:text-black">
               View raw OCR text
             </summary>
-            <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
+            <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-[#f6f7fb] p-3 text-xs text-[var(--text)]">
               {ocr.raw_text}
             </pre>
           </details>
@@ -827,9 +821,9 @@ function DocumentSection({ report }: { report: VerificationReport }) {
   return (
     <SectionCard
       title="Document"
-      icon={<FileSearch className="h-4 w-4 text-indigo-500" aria-hidden />}
+      icon={<FileSearch className="h-4 w-4 text-neutral-500" aria-hidden />}
       action={
-        <Badge className="bg-slate-100 text-slate-700 ring-slate-500/20">
+        <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
           {report.document_type || "unknown"}
         </Badge>
       }
@@ -845,18 +839,18 @@ function DocumentSection({ report }: { report: VerificationReport }) {
         />
       ) : null}
       {report.extracted_fields ? (
-        <div className="mt-3 border-t border-slate-100 pt-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-3 border-t border-[var(--border)] pt-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Extracted fields
           </div>
           {Object.keys(fields).length === 0 ? (
-            <p className="text-sm text-slate-500">No fields extracted yet.</p>
+            <p className="text-sm text-[var(--muted)]">No fields extracted yet.</p>
           ) : (
             <dl className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
               {Object.entries(fields).map(([k, v]) => (
                 <div key={k} className="py-1 text-sm">
-                  <dt className="text-slate-500">{k}</dt>
-                  <dd className="font-medium text-slate-800">
+                  <dt className="text-[var(--muted)]">{k}</dt>
+                  <dd className="font-medium text-[var(--text)]">
                     {String(v ?? "—")}
                   </dd>
                 </div>
@@ -871,11 +865,11 @@ function DocumentSection({ report }: { report: VerificationReport }) {
 
 function verdictTone(verdict: string | undefined): string {
   const v = (verdict ?? "").toUpperCase();
-  if (v === "PASS") return "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
+  if (v === "PASS") return "bg-neutral-200/70 text-neutral-600 ring-neutral-400/40";
   if (v === "FAIL" || v === "MISMATCH")
-    return "bg-red-50 text-red-700 ring-red-600/20";
-  if (v === "WARN") return "bg-amber-50 text-amber-700 ring-amber-600/20";
-  return "bg-slate-100 text-slate-600 ring-slate-500/20";
+    return "bg-neutral-200/80 text-black ring-neutral-400/40";
+  if (v === "WARN") return "bg-neutral-300/40 text-neutral-800 ring-neutral-400/40";
+  return "bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]";
 }
 
 function ValidationSection({ report }: { report: VerificationReport }) {
@@ -889,7 +883,7 @@ function ValidationSection({ report }: { report: VerificationReport }) {
   return (
     <SectionCard
       title="Validation"
-      icon={<UserCheck className="h-4 w-4 text-indigo-500" aria-hidden />}
+      icon={<UserCheck className="h-4 w-4 text-neutral-500" aria-hidden />}
       action={
         <Badge className={verdictTone(crossOverall)}>{crossOverall}</Badge>
       }
@@ -923,8 +917,8 @@ function ValidationSection({ report }: { report: VerificationReport }) {
         value={expiryStatus(validation, mrz)}
       />
       {Object.keys(validation).length > 0 ? (
-        <div className="mt-3 border-t border-slate-100 pt-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-3 border-t border-[var(--border)] pt-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Field checks
           </div>
           <ul className="space-y-1.5">
@@ -934,9 +928,9 @@ function ValidationSection({ report }: { report: VerificationReport }) {
               return (
                 <li
                   key={field}
-                  className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-sm"
+                  className="flex items-center justify-between rounded-lg bg-[#f6f7fb] px-3 py-1.5 text-sm"
                 >
-                  <span className="text-slate-600">{field.replace(/_/g, " ")}</span>
+                  <span className="text-[var(--text)]">{field.replace(/_/g, " ")}</span>
                   <Badge className={verdictTone(verdict)}>{verdict}</Badge>
                 </li>
               );
@@ -973,21 +967,21 @@ function BiometricsSection({ report }: { report: VerificationReport }) {
   return (
     <SectionCard
       title="Biometrics"
-      icon={<Camera className="h-4 w-4 text-indigo-500" aria-hidden />}
+      icon={<Camera className="h-4 w-4 text-neutral-500" aria-hidden />}
       action={
         verification.verdict === "match" ? (
-          <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+          <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">
             match
           </Badge>
         ) : hasFaceData ? (
-          <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">
+          <Badge className="bg-neutral-300/40 text-neutral-800 ring-neutral-400/40">
             {String(verification.verdict ?? "review")}
           </Badge>
         ) : null
       }
     >
       {!hasFaceData ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[var(--muted)]">
           No face data provided for this verification.
         </p>
       ) : (
@@ -1033,21 +1027,21 @@ function ForensicsSection({ report }: { report: VerificationReport }) {
   return (
     <SectionCard
       title="Forensics"
-      icon={<Radar className="h-4 w-4 text-indigo-500" aria-hidden />}
+      icon={<Radar className="h-4 w-4 text-neutral-500" aria-hidden />}
       action={
         evidenceStatus === "sufficient_evidence" ? (
-          <Badge className="bg-orange-50 text-orange-700 ring-orange-600/20">
+          <Badge className="bg-neutral-400/30 text-neutral-800 ring-neutral-400/40">
             validated signal
           </Badge>
         ) : (
-          <Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">
+          <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
             experimental
           </Badge>
         )
       }
     >
       {!report.forensics ? (
-        <p className="text-sm text-slate-500">Forensic analysis not performed.</p>
+        <p className="text-sm text-[var(--muted)]">Forensic analysis not performed.</p>
       ) : (
         <div className="space-y-3">
           <StatDisplay
@@ -1059,7 +1053,7 @@ function ForensicsSection({ report }: { report: VerificationReport }) {
             }
           />
           {hasValidatedScore ? null : (
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] text-[var(--muted)]">
               Forensic detectors are experimental/unvalidated; experimental
               signals below are research indicators, not a tampering verdict.
             </p>
@@ -1067,7 +1061,7 @@ function ForensicsSection({ report }: { report: VerificationReport }) {
           {flags.length > 0 ? (
             <>
               <div>
-                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   Suspicious regions
                 </div>
                 <ul className="space-y-1.5">
@@ -1076,16 +1070,16 @@ function ForensicsSection({ report }: { report: VerificationReport }) {
                     return (
                       <li
                         key={i}
-                        className="flex items-center justify-between rounded-lg bg-red-50/60 px-3 py-1.5 text-sm"
+                        className="flex items-center justify-between rounded-lg bg-neutral-200/80 px-3 py-1.5 text-sm"
                       >
-                        <span className="text-red-700">
+                        <span className="text-black">
                           {String(flag.signal ?? flag.description ?? "region")}
                         </span>
                         <Badge
                           className={cn(
-                            "bg-red-50 text-red-700 ring-red-600/20",
+                            "bg-neutral-200/80 text-black ring-neutral-400/40",
                             String(flag.severity ?? "LOW").toUpperCase() === "HIGH" &&
-                              "bg-red-100",
+                              "bg-neutral-400/60",
                           )}
                         >
                           {String((flag.score ?? 0) as number * 100).slice(0, 4)}%
@@ -1098,7 +1092,7 @@ function ForensicsSection({ report }: { report: VerificationReport }) {
             </>
           ) : null}
           {forensics.summary ? (
-            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+            <div className="rounded-lg bg-[#f6f7fb] p-3 text-sm text-[var(--text)]">
               {String(forensics.summary)}
             </div>
           ) : null}
@@ -1115,10 +1109,10 @@ function RegistrySection({ report }: { report: VerificationReport }) {
     return (
       <SectionCard
         title="Registry"
-        icon={<Landmark className="h-4 w-4 text-indigo-500" aria-hidden />}
-        action={<Badge className="bg-slate-100 text-slate-600 ring-slate-500/20">skipped</Badge>}
+        icon={<Landmark className="h-4 w-4 text-neutral-500" aria-hidden />}
+        action={<Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">skipped</Badge>}
       >
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[var(--muted)]">
           Registry check was not run for this verification.
         </p>
       </SectionCard>
@@ -1127,12 +1121,12 @@ function RegistrySection({ report }: { report: VerificationReport }) {
   return (
     <SectionCard
       title="Registry"
-      icon={<Landmark className="h-4 w-4 text-indigo-500" aria-hidden />}
+      icon={<Landmark className="h-4 w-4 text-neutral-500" aria-hidden />}
       action={
         registry.alert ? (
-          <Badge className="bg-red-50 text-red-700 ring-red-600/20">alert</Badge>
+          <Badge className="bg-neutral-200/80 text-black ring-neutral-400/40">alert</Badge>
         ) : (
-          <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+          <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">
             clear
           </Badge>
         )
@@ -1141,16 +1135,16 @@ function RegistrySection({ report }: { report: VerificationReport }) {
       <StatDisplay label="Status" value={found > 0 ? "found" : "not found"} />
       <StatDisplay label="Match result" value={String(registry.match ?? "—")} />
       {Array.isArray(registry.entries) && registry.entries.length > 0 ? (
-        <ul className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+        <ul className="mt-3 space-y-1.5 border-t border-[var(--border)] pt-3">
           {(registry.entries as Array<Record<string, unknown>>).map((e, i) => (
             <li
               key={i}
-              className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-sm"
+              className="flex items-center justify-between rounded-lg bg-[#f6f7fb] px-3 py-1.5 text-sm"
             >
-              <span className="text-slate-600">
+              <span className="text-[var(--text)]">
                 {String(e.registry_type ?? "registry")}
               </span>
-              <Badge className="bg-slate-100 text-slate-700 ring-slate-500/20">
+              <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
                 {String(e.status ?? "?")}
               </Badge>
             </li>

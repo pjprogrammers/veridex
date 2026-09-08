@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Skillset Dashboard</title>
+<style>
+  :root{
+    --bg:#eef1f6;
+    --card:#ffffff;
+    --dark:#1c1d21;
+    --dark-2:#232428;
+    --text:#1c1d21;
+    --muted:#8b8d98;
+    --green:#22c55e;
+    --red:#ef4444;
+    --purple:#6c5ce7;
+    --border:#e7e9ee;
+    --sidebar-bg:#f6f7fb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:13px;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:210px 1fr;
+    min-height:100vh;
+  }
+
+  /* Sidebar */
+  .sidebar{
+    background:var(--sidebar-bg);
+    border-right:1px solid var(--border);
+    padding:20px 16px;
+    display:flex;
+    flex-direction:column;
+  }
+  .logo{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    font-size:16px;
+    margin-bottom:28px;
+    padding:0 4px;
+  }
+  .logo-badge{
+    width:22px;height:22px;border-radius:6px;
+    background:linear-gradient(135deg,#7c6cf7,#4b3fd9);
+    flex-shrink:0;
+  }
+  .nav-section{margin-bottom:auto;}
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 10px;
+    border-radius:8px;
+    color:#6b6d78;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    margin-bottom:2px;
+  }
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;}
+  .nav-item.active{
+    background:var(--dark);
+    color:#fff;
+  }
+  .nav-item:not(.active):hover{background:#e9ebf1;}
+  .nav-caret{margin-left:auto;font-size:10px;opacity:.6;}
+
+  .upgrade-card{
+    background:linear-gradient(160deg,#7c6cf7,#5b4fe0);
+    border-radius:12px;
+    padding:14px;
+    color:#fff;
+    margin:16px 0;
+  }
+  .upgrade-card h4{margin:0 0 4px;font-size:13px;}
+  .upgrade-card p{margin:0 0 10px;font-size:11px;opacity:.85;line-height:1.4;}
+  .upgrade-btn{
+    background:#fff;
+    color:#4b3fd9;
+    border:none;
+    border-radius:7px;
+    padding:7px 0;
+    width:100%;
+    font-weight:600;
+    font-size:12px;
+    cursor:pointer;
+  }
+
+  .nav-bottom{border-top:1px solid var(--border);padding-top:8px;}
+
+  /* Main */
+  .main{padding:20px 28px;}
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:22px;
+  }
+  .topbar h1{font-size:20px;margin:0;font-weight:700;}
+  .search{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:8px 16px;
+    width:260px;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .search svg{width:14px;height:14px;flex-shrink:0;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .icon-btn{
+    width:34px;height:34px;border-radius:50%;
+    background:#fff;border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .avatar{width:34px;height:34px;border-radius:50%;background:#d9d3ff;}
+
+  .filter-row{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .segmented{
+    display:flex;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .segmented span{
+    padding:7px 14px;
+    font-size:12px;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .segmented span.active{background:var(--dark);color:#fff;font-weight:600;}
+  .date-range{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:7px 14px;
+    font-size:12px;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  /* KPI cards */
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:18px;
+  }
+  .kpi-card{
+    border-radius:14px;
+    padding:16px 18px;
+  }
+  .kpi-card.dark{background:var(--dark);color:#fff;}
+  .kpi-card.light{background:#fff;border:1px solid var(--border);}
+  .kpi-label{font-size:12.5px;opacity:.75;margin-bottom:10px;}
+  .kpi-card.light .kpi-label{color:var(--muted);opacity:1;}
+  .kpi-value{font-size:24px;font-weight:700;margin-bottom:10px;}
+  .kpi-delta{
+    font-size:11.5px;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    color:var(--muted);
+  }
+  .kpi-card.dark .kpi-delta{color:#a9abb5;}
+  .kpi-delta.up{color:var(--green);}
+  .kpi-delta.up::before{content:"↗";}
+  .kpi-delta .grey{color:inherit;opacity:.7;}
+
+  /* Content row */
+  .content-row{
+    display:grid;
+    grid-template-columns:1.6fr 1fr;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .panel{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 20px;
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .panel-head h3{font-size:14.5px;margin:0;font-weight:700;}
+  .expand-btn{
+    width:26px;height:26px;border-radius:6px;
+    border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);
+    cursor:pointer;
+  }
+
+  .chart-wrap{
+    display:flex;
+    align-items:flex-end;
+    gap:0;
+    height:180px;
+    position:relative;
+    padding-left:34px;
+  }
+  .y-axis{
+    position:absolute;
+    left:0;top:0;bottom:24px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    font-size:11px;
+    color:var(--muted);
+  }
+  .bars{
+    flex:1;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-around;
+    height:100%;
+    border-left:1px solid var(--border);
+    padding-left:14px;
+  }
+  .bar-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    height:100%;
+    gap:8px;
+    width:34px;
+  }
+  .bar{
+    width:26px;
+    border-radius:6px 6px 0 0;
+    background:var(--dark);
+  }
+  .bar-col.highlight .bar{background:#c9c9cf;}
+  .bar-month{font-size:11px;color:var(--muted);}
+
+  /* Calendar panel */
+  .cal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .cal-head h3{font-size:14.5px;margin:0;font-weight:700;}
+  .cal-nav{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;}
+  .cal-nav span.chev{cursor:pointer;}
+  .cal-strip{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .cal-day{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    font-size:11px;
+    color:var(--muted);
+    width:34px;
+  }
+  .cal-day .num{
+    width:30px;height:30px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text);
+    font-size:12.5px;
+  }
+  .cal-day.active .num{background:var(--dark);color:#fff;font-weight:700;}
+
+  .growth-box{
+    border-top:1px solid var(--border);
+    padding-top:16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .growth-label{font-size:12.5px;font-weight:600;margin-bottom:6px;}
+  .growth-delta{font-size:11px;color:var(--green);display:flex;align-items:center;gap:3px;}
+  .growth-delta::before{content:"↗";}
+  .ring{
+    width:52px;height:52px;
+    border-radius:50%;
+    background:conic-gradient(var(--dark) 0% 65%, #ececef 65% 100%);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .ring::after{
+    content:"65%";
+    width:38px;height:38px;
+    border-radius:50%;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;
+  }
+
+  /* Table */
+  .table-panel{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 20px;
+  }
+  table{width:100%;border-collapse:collapse;}
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    color:var(--muted);
+    font-weight:600;
+    padding:0 10px 12px;
+    border-bottom:1px solid var(--border);
+  }
+  tbody td{
+    padding:14px 10px;
+    font-size:13px;
+    vertical-align:middle;
+  }
+  .course-cell{display:flex;align-items:center;gap:10px;}
+  .course-thumb{
+    width:36px;height:36px;border-radius:8px;
+    background:linear-gradient(135deg,#374151,#111827);
+    flex-shrink:0;
+  }
+  .status-pill{
+    background:#22c55e;
+    color:#fff;
+    font-size:11.5px;
+    font-weight:600;
+    padding:5px 16px;
+    border-radius:16px;
+    display:inline-block;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-badge"></div>
+      Skillset
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+        Mentors
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/></svg>
+        Students
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        Analytics
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Courses
+        <span class="nav-caret">▾</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Forum
+      </div>
+    </div>
+
+    <div class="upgrade-card">
+      <h4>Upgrade To Pro</h4>
+      <p>Get access to all features on Skillset</p>
+      <button class="upgrade-btn">Upgrade</button>
+    </div>
+
+    <div class="nav-bottom">
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
+        Help Center
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <h1>Dashboard</h1>
+      <div class="topbar-right">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          Search...
+        </div>
+        <div class="icon-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="avatar"></div>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <div class="segmented">
+        <span>Day</span>
+        <span>Week</span>
+        <span class="active">Month</span>
+        <span>Year</span>
+      </div>
+      <div class="date-range">📅 1 Sep 2024 - 31 Sep 2024</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card dark">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value">$23,902</div>
+        <div class="kpi-delta up">7% <span class="grey">from last month</span></div>
+      </div>
+      <div class="kpi-card light">
+        <div class="kpi-label">Active Users</div>
+        <div class="kpi-value">16,815</div>
+        <div class="kpi-delta up">12% <span class="grey">from last month</span></div>
+      </div>
+      <div class="kpi-card light">
+        <div class="kpi-label">New Users</div>
+        <div class="kpi-value">1,457</div>
+        <div class="kpi-delta up">29% <span class="grey">from last month</span></div>
+      </div>
+      <div class="kpi-card light">
+        <div class="kpi-label">Total Mentors</div>
+        <div class="kpi-value">2,023</div>
+        <div class="kpi-delta up">65% <span class="grey">from last month</span></div>
+      </div>
+    </div>
+
+    <div class="content-row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Total Revenue</h3>
+          <div class="expand-btn">⤢</div>
+        </div>
+        <div class="chart-wrap">
+          <div class="y-axis">
+            <span>10K</span><span>8K</span><span>6K</span><span>4K</span><span>2K</span><span>0K</span>
+          </div>
+          <div class="bars">
+            <div class="bar-col"><div class="bar" style="height:64%"></div><div class="bar-month">Jan</div></div>
+            <div class="bar-col"><div class="bar" style="height:52%"></div><div class="bar-month">Feb</div></div>
+            <div class="bar-col highlight"><div class="bar" style="height:80%"></div><div class="bar-month">Mar</div></div>
+            <div class="bar-col"><div class="bar" style="height:48%"></div><div class="bar-month">Apr</div></div>
+            <div class="bar-col"><div class="bar" style="height:58%"></div><div class="bar-month">May</div></div>
+            <div class="bar-col"><div class="bar" style="height:34%"></div><div class="bar-month">Jun</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="cal-head">
+          <h3>September 2024</h3>
+          <div class="cal-nav"><span class="chev">‹</span><span class="chev">›</span></div>
+        </div>
+        <div class="cal-strip">
+          <div class="cal-day"><span>Tue</span><span class="num">17</span></div>
+          <div class="cal-day"><span>Wed</span><span class="num">18</span></div>
+          <div class="cal-day"><span>Thu</span><span class="num">19</span></div>
+          <div class="cal-day active"><span>Fri</span><span class="num">12</span></div>
+          <div class="cal-day"><span>Sat</span><span class="num">20</span></div>
+          <div class="cal-day"><span>Sat</span><span class="num">21</span></div>
+        </div>
+        <div class="growth-box">
+          <div>
+            <div class="growth-label">Community growth</div>
+            <div class="growth-delta">8% from last month</div>
+          </div>
+          <div class="ring"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-panel">
+      <div class="panel-head">
+        <h3>Course Purchases</h3>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Course Name</th>
+            <th>Student Name</th>
+            <th>Student ID</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="course-cell">
+                <div class="course-thumb"></div>
+                Digital Marketing
+              </div>
+            </td>
+            <td>Aria</td>
+            <td>#345699</td>
+            <td>$372.00</td>
+            <td><span class="status-pill">Paid</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

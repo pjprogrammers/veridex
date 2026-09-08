@@ -11,10 +11,12 @@ import {
   CardHeader,
   EmptyState,
   Input,
+  Label,
+  Select,
   Skeleton,
   Spinner,
 } from "@/components/ui";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export default function AuditPage() {
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
@@ -66,10 +68,10 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in-up">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Audit Trail</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Audit Trail</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">
           Tamper-evident, SHA-256 chained log of all system activity.
         </p>
       </div>
@@ -81,13 +83,11 @@ export default function AuditPage() {
           title="Filters"
           subtitle="Refine the audit log view"
         />
-        <div className="flex flex-wrap items-end gap-4 p-4">
+        <div className="flex flex-wrap items-end gap-4 p-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Action
-            </label>
-            <select
-              className="h-10 w-48 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            <Label>Action</Label>
+            <Select
+              className="w-48"
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
             >
@@ -97,12 +97,10 @@ export default function AuditPage() {
                   {a}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Case ID
-            </label>
+            <Label>Case ID</Label>
             <Input
               className="w-64 font-mono"
               placeholder="UUID of a case"
@@ -120,7 +118,7 @@ export default function AuditPage() {
             title="Chain integrity"
             subtitle="Verify the audit hash chain per case"
           />
-          <ul className="divide-y divide-slate-50">
+          <ul className="divide-y divide-[var(--border)]">
             {uniqueCases.map((caseId) => {
               const result = verifyResults[caseId];
               return (
@@ -129,13 +127,13 @@ export default function AuditPage() {
                   className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="font-mono text-xs text-slate-600">{caseId}</div>
+                    <div className="font-mono text-xs text-[var(--text)]">{caseId}</div>
                     {result ? (
                       <div
                         className={
                           result.valid
-                            ? "mt-1 text-xs font-medium text-emerald-600"
-                            : "mt-1 text-xs font-medium text-red-600"
+                            ? "mt-1 text-xs font-medium text-neutral-600"
+                            : "mt-1 text-xs font-medium text-black"
                         }
                       >
                         {result.valid
@@ -181,40 +179,46 @@ export default function AuditPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-xs text-slate-500">
-                  <th className="px-5 py-3 font-medium">#</th>
-                  <th className="px-5 py-3 font-medium">Action</th>
-                  <th className="px-5 py-3 font-medium">Actor</th>
-                  <th className="px-5 py-3 font-medium">Case</th>
-                  <th className="px-5 py-3 font-medium">Timestamp</th>
-                  <th className="px-5 py-3 font-medium">Hash</th>
+                <tr className="border-b border-[var(--border)] bg-[#f6f7fb]">
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">#</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Action</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Actor</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Case</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Timestamp</th>
+                  <th className="px-6 py-3 text-[11.5px] font-semibold text-[var(--muted)]">Hash</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {entries.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 text-xs text-slate-400">#{e.id}</td>
-                    <td className="px-5 py-3">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
-                        <ScrollText className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+              <tbody className="divide-y divide-[var(--border)]">
+                {entries.map((e, idx) => (
+                  <tr
+                    key={e.id}
+                    className={cn(
+                      "table-row-alt transition-colors hover:bg-neutral-100/70",
+                      idx % 2 === 1 && "bg-[#f8f9fc]",
+                    )}
+                  >
+                    <td className="px-6 py-3.5 text-xs text-[var(--muted)]">#{e.id}</td>
+                    <td className="px-6 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text)]">
+                        <ScrollText className="h-3.5 w-3.5 text-[var(--muted)]" aria-hidden />
                         {e.action}
                       </span>
                       {Object.keys(e.payload ?? {}).length > 0 ? (
-                        <div className="mt-0.5 max-w-xs truncate font-mono text-[10px] text-slate-400">
+                        <div className="mt-0.5 max-w-xs truncate font-mono text-[10px] text-[var(--muted)]">
                           {JSON.stringify(e.payload)}
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-5 py-3">
-                      <span className="text-slate-600">{e.actor_role ?? "—"}</span>
+                    <td className="px-6 py-3.5">
+                      <span className="text-[var(--text)]">{e.actor_role ?? "—"}</span>
                     </td>
-                    <td className="px-5 py-3 font-mono text-[11px] text-slate-500">
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-[var(--muted)]">
                       {e.case_id ? e.case_id.slice(0, 8) : "—"}
                     </td>
-                    <td className="px-5 py-3 text-xs text-slate-500">
+                    <td className="px-6 py-3.5 text-xs text-[var(--muted)]">
                       {formatDate(e.timestamp)}
                     </td>
-                    <td className="px-5 py-3 font-mono text-[10px] text-slate-400">
+                    <td className="px-6 py-3.5 font-mono text-[10px] text-[var(--muted)]">
                       {e.current_hash?.slice(0, 12)}…
                     </td>
                   </tr>

@@ -7,6 +7,3 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create application schema
 CREATE SCHEMA IF NOT EXISTS veridex;
-
--- Set default schema
-ALTER DATABASE veridex SET search_path TO veridex, public;

@@ -2,8 +2,9 @@
 # These require Python 3.11 (paddlex/insightface/onnxruntime do not
 # yet support newer Python versions portably). Install in the AI
 # service Docker images, NOT in the core API image.
-paddleocr==2.9.1
-paddlepaddle==2.6.2
-mrz==3.1
-insightface==0.7.3
-onnxruntime==1.19.2
+#
+# Pinned to the VERIDEX — AI / CV layer specification versions.
+paddleocr==3.7.0
+paddlepaddle==3.3.1
+insightface==1.0.1
+onnxruntime==1.29.0

@@ -48,24 +48,24 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">
-            V
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center">
+            <div className="logo-badge" />
           </div>
-          <h1 className="text-xl font-semibold text-white">Create account</h1>
-          <p className="mt-1 text-sm text-slate-400">Officer onboarding</p>
+          <h1 className="text-xl font-semibold text-[var(--text)]">Create account</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">Officer onboarding</p>
         </div>
 
         <form
           onSubmit={onSubmit}
-          className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl"
+          className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_8px_32px_rgba(28,29,33,0.06)]"
         >
           {error ? <Alert title="Registration failed">{error}</Alert> : null}
           <div className={error ? "mt-4 space-y-4" : "space-y-4"}>
             <div>
-              <Label className="text-slate-400">Username</Label>
+              <Label>Username</Label>
               <Input
                 value={form.username}
                 onChange={(e) => set("username", e.target.value)}
@@ -74,7 +74,7 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <Label className="text-slate-400">Email</Label>
+              <Label>Email</Label>
               <Input
                 type="email"
                 value={form.email}
@@ -83,14 +83,14 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <Label className="text-slate-400">Full name (optional)</Label>
+              <Label>Full name (optional)</Label>
               <Input
                 value={form.full_name}
                 onChange={(e) => set("full_name", e.target.value)}
               />
             </div>
             <div>
-              <Label className="text-slate-400">Password</Label>
+              <Label>Password</Label>
               <Input
                 type="password"
                 value={form.password}
@@ -99,7 +99,7 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <Label className="text-slate-400">Confirm password</Label>
+              <Label>Confirm password</Label>
               <Input
                 type="password"
                 value={form.confirm}
@@ -113,9 +113,9 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-slate-500">
+        <p className="mt-4 text-center text-xs text-[var(--muted)]">
           Already registered?{" "}
-          <Link href="/login" className="font-medium text-indigo-400">
+          <Link href="/login" className="font-medium text-neutral-500">
             Sign in
           </Link>
         </p>
