@@ -616,7 +616,7 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
               No structured fields matched the selected document schema.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -636,7 +636,7 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
                           </Badge>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">
+                      <td className="px-3 py-2 break-all font-medium text-[var(--text)]">
                         {f.value || "—"}
                       </td>
                       <td className="px-3 py-2 text-right text-xs font-medium text-[var(--text)]">
@@ -657,7 +657,7 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
           {blocks.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">No text detected.</p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -670,7 +670,7 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
                   {blocks.slice(0, 300).map((b, i) => (
                     <tr key={i} className="border-b border-[var(--border)] last:border-0">
                       <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{i + 1}</td>
-                      <td className="px-3 py-1.5 font-medium text-[var(--text)]">
+                      <td className="px-3 py-1.5 break-all font-medium text-[var(--text)]">
                         {b.text}
                         {b.low_confidence ? (
                           <Badge className="ml-2 bg-neutral-300/40 text-neutral-800 ring-neutral-400/40">
@@ -701,7 +701,7 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
             <SectionLabel icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}>
               Visual vs MRZ consistency
             </SectionLabel>
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -715,8 +715,8 @@ function OCRGeneral({ result }: { result: OCREngineResult }) {
                   {Object.entries(result.consistency).map(([name, c]) => (
                     <tr key={name} className="border-b border-[var(--border)] last:border-0">
                       <td className="px-3 py-2 text-[var(--muted)]">{name.replace(/_/g, " ")}</td>
-                      <td className="px-3 py-2 text-[var(--text)]">{c.visual || "—"}</td>
-                      <td className="px-3 py-2 text-[var(--text)]">{c.mrz || "—"}</td>
+                      <td className="px-3 py-2 break-all text-[var(--text)]">{c.visual || "—"}</td>
+                      <td className="px-3 py-2 break-all text-[var(--text)]">{c.mrz || "—"}</td>
                       <td className="px-3 py-2 text-right">
                         {c.match === true ? (
                           <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">Match</Badge>
@@ -775,7 +775,7 @@ function MRZGeneral({ mrz }: { mrz: NonNullable<OCREngineResult["mrz"]> }) {
                     <td className="py-1.5 pr-3 text-[var(--muted)]">
                       {k.replace(/_/g, " ")}
                     </td>
-                    <td className="py-1.5 font-medium text-[var(--text)]">{v || "—"}</td>
+                    <td className="py-1.5 break-all font-medium text-[var(--text)]">{v || "—"}</td>
                   </tr>
                 ))}
               </tbody>

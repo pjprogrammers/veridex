@@ -7,6 +7,7 @@ import {
   Bell,
   BrainCircuit,
   Database,
+  FlaskConical,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -31,6 +32,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/verify", label: "New Verification", icon: ScanLine },
+  { href: "/demo", label: "Demo Workflow", icon: FlaskConical },
   { href: "/cases", label: "Cases", icon: ScrollText },
   { href: "/showcase", label: "AI Showcase", icon: BrainCircuit },
   { href: "/registry", label: "Registry", icon: Database },
@@ -206,7 +208,7 @@ export default function ConsoleShell({
 
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Search (reference .search) */}
-            <div className="hidden w-56 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm text-[var(--muted)] sm:flex">
+            <div className="hidden w-56 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm text-[var(--muted)] lg:flex">
               <Search className="h-3.5 w-3.5" />
               <span className="text-[13px]">Search...</span>
             </div>
@@ -214,7 +216,7 @@ export default function ConsoleShell({
             {/* System status */}
             <div
               className={cn(
-                "hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset sm:inline-flex",
+                "hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset md:inline-flex",
                 system?.status === "ok"
                   ? "bg-neutral-100 text-neutral-700 ring-neutral-300"
                   : system
@@ -252,7 +254,7 @@ export default function ConsoleShell({
             {/* Officer identity */}
             <div className="flex items-center gap-3 border-l border-[var(--border)] pl-4">
               <div className="h-[34px] w-[34px] rounded-full bg-neutral-300" aria-hidden />
-              <div className="hidden text-right sm:block">
+              <div className="hidden text-right lg:block">
                 <div className="text-sm font-medium text-[var(--text)]">
                   {user.full_name || user.username}
                 </div>
@@ -269,6 +271,13 @@ export default function ConsoleShell({
             </div>
           </div>
         </header>
+
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 border-b border-[var(--border)] bg-[var(--dark)] px-4 py-1.5 text-center text-[11px] font-medium tracking-wide text-white">
+          <span>VERIDEX • SIH DEMONSTRATION MODE</span>
+          <span className="text-white/55">
+            SYNTHETIC DATA — NOT FOR REAL IDENTITY VERIFICATION
+          </span>
+        </div>
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-7 xl:p-8">{children}</main>
       </div>

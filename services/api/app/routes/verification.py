@@ -136,8 +136,76 @@ async def full_verification(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Run the complete verification workflow for a document."""
+    """Run the complete verification workflow for a document.
+
+    Demo mode: when a static scenario is resolvable for this document (set on
+    the case or matched by content hash), the canned prototype response is
+    returned instead of invoking the heavy ML pipeline.
+    """
     doc = await _get_document(db, document_id)
+
+    from app.static_demo import (
+        canonical_result_hash,
+        known_scenario,
+        scenario_for_document,
+        static_record_payload,
+        static_verification,
+    )
+
+    scenario_key = await scenario_for_document(db, doc)
+    scenario = known_scenario(scenario_key)
+    if scenario:
+        payload = static_record_payload(scenario)
+        doc.document_type = payload["document_type"]  # type: ignore[assignment]
+        doc.quality_score = payload["quality_score"]  # type: ignore[assignment]
+        doc.mrz_data = payload["mrz_data"]  # type: ignore[assignment]
+        doc.extracted_fields = payload["extracted_fields"]  # type: ignore[assignment]
+        doc.classification_data = payload["classification_data"]  # type: ignore[assignment]
+        doc.ocr_extracted_fields = payload["ocr_extracted_fields"]  # type: ignore[assignment]
+        doc.forensic_data = payload["forensic_data"]  # type: ignore[assignment]
+
+        result = static_verification(scenario, str(doc.id))
+        doc.verification_data = result  # type: ignore[assignment]
+
+        from app.models.models import VerificationCase
+        from app.services.audit import append_audit_entry
+
+        case = await db.get(VerificationCase, doc.case_id)
+        if case:
+            risk = result["risk"]
+            case.risk_level = risk["level"]  # type: ignore[assignment]
+            case.risk_score = risk["score"]  # type: ignore[assignment]
+            if risk["level"] in ("HIGH", "CRITICAL"):
+                case.status = "flagged"  # type: ignore[assignment]
+            # Anchor the actual extracted values and the result hash into the
+            # tamper-evident audit chain (ledger analogue).
+            result_hash = canonical_result_hash(result)
+            case.document_hash = doc.content_hash  # type: ignore[assignment]
+            case.case_metadata = {  # type: ignore[assignment]
+                **(case.case_metadata or {}),
+                "verification_hash": result_hash,
+                "extracted_fields": doc.extracted_fields,
+                "risk": {"level": risk["level"], "score": risk["score"]},
+            }
+            await append_audit_entry(
+                db,
+                case_id=case.id,
+                action="verification_completed",
+                actor_id=uuid.UUID(current_user["user_id"]),
+                actor_role=current_user.get("role"),
+                payload={
+                    "document_id": str(doc.id),
+                    "risk_level": risk["level"],
+                    "risk_score": risk["score"],
+                    "demo_scenario": scenario_key,
+                    "document_content_hash": doc.content_hash,
+                    "verification_hash": result_hash,
+                    "extracted_fields": doc.extracted_fields,
+                },
+            )
+        await db.commit()
+        return {"success": True, "verification": result, "demo": True}
+
     live_bytes = None
     if live_face:
         if live_face.content_type not in ("image/jpeg", "image/png"):
@@ -184,6 +252,14 @@ async def full_verification(
         case.risk_score = risk["score"]  # type: ignore[assignment]
         if risk["level"] in ("HIGH", "CRITICAL"):
             case.status = "flagged"  # type: ignore[assignment]
+        result_hash = canonical_result_hash(result)
+        case.document_hash = doc.content_hash  # type: ignore[assignment]
+        case.case_metadata = {  # type: ignore[assignment]
+            **(case.case_metadata or {}),
+            "verification_hash": result_hash,
+            "extracted_fields": doc.extracted_fields,
+            "risk": {"level": risk["level"], "score": risk["score"]},
+        }
         await append_audit_entry(
             db,
             case_id=case.id,
@@ -194,6 +270,9 @@ async def full_verification(
                 "document_id": str(doc.id),
                 "risk_level": risk["level"],
                 "risk_score": risk["score"],
+                "document_content_hash": doc.content_hash,
+                "verification_hash": result_hash,
+                "extracted_fields": doc.extracted_fields,
             },
         )
         await db.commit()

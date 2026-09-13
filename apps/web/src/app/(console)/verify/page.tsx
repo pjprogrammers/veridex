@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ban,
+  Camera,
   CalendarX2,
   CheckCircle2,
   FileImage,
@@ -17,6 +18,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { LiveFaceCapture } from "@/components/live-face-capture";
 import { api, errorFn } from "@/lib/api";
 import {
   analyzeDocument,
@@ -43,11 +45,11 @@ import { PROCESSING_LABELS } from "@/lib/types";
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_SIZE_MB = 15;
 
-function withUniqueSuffix(bytes: ArrayBuffer): Blob {
+function withUniqueSuffix(bytes: ArrayBuffer, type: string): Blob {
   const marker = new TextEncoder().encode(
     `\u0000VERIDEX-DEMO-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
-  return new Blob([bytes, marker], { type: "image/png" });
+  return new Blob([bytes, marker], { type });
 }
 
 interface DemoScenario {
@@ -63,48 +65,84 @@ interface DemoScenario {
 
 const DEMO_SCENARIOS: DemoScenario[] = [
   {
-    key: "genuine",
-    label: "Genuine",
-    signal: "expect CLEAR · low risk",
-    description: "Clean synthetic passport, valid MRZ, registry-clear.",
+    key: "aadhaar",
+    label: "Piyush · Aadhaar",
+    signal: "expect CLEAR · genuine",
+    description: "Synthetic Aadhaar card of Piyush Verma (piyush.jpeg).",
+    docFile: "piyush.jpeg",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "suresh",
+    label: "Suresh Kumar",
+    signal: "expect CLEAR",
+    description: "Valid synthetic passport, valid MRZ, registry-clear.",
     docFile: "genuine_passport.png",
     registry: true,
     forensics: true,
   },
   {
-    key: "tampered",
-    label: "Tampered",
-    signal: "expect forensic tamper signals",
-    description: "Same passport with an altered document area.",
-    docFile: "tampered_passport.png",
-    registry: true,
-    forensics: true,
-  },
-  {
-    key: "expired",
-    label: "Expired",
-    signal: "expect validation FAIL · expired",
-    description: "Passport whose date of expiry has passed.",
+    key: "rajesh",
+    label: "Rajesh Sharma",
+    signal: "expect EXPIRED",
+    description: "Passport whose status is reported as EXPIRED.",
     docFile: "expired_passport.png",
     registry: true,
     forensics: true,
   },
   {
-    key: "blacklisted",
-    label: "Blacklisted",
-    signal: "expect registry alert",
-    description: "Passport number flagged in the registry.",
-    docFile: "blacklisted_passport.png",
+    key: "amit",
+    label: "Amit Singh",
+    signal: "expect MANUAL REVIEW",
+    description: "Synthetic passport with tamper signals.",
+    docFile: "tampered_passport.png",
     registry: true,
     forensics: true,
   },
   {
-    key: "impersonation",
-    label: "Impersonation",
+    key: "priya",
+    label: "Priya Verma",
+    signal: "expect CLEAR",
+    description: "Valid synthetic passport, registry-clear.",
+    docFile: "genuine_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "neha",
+    label: "Neha Gupta",
+    signal: "expect MRZ mismatch",
+    description: "Printed passport number vs MRZ mismatch.",
+    docFile: "genuine_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "rohit",
+    label: "Rohit Mehta",
     signal: "expect face mismatch",
     description: "Document portrait vs a different live face.",
     docFile: "genuine_passport.png",
     liveFaceFile: "live_other.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "anil",
+    label: "Anil Kapoor",
+    signal: "expect tampering detected",
+    description: "Passport with strong tampering signals.",
+    docFile: "tampered_passport.png",
+    registry: true,
+    forensics: true,
+  },
+  {
+    key: "kavita",
+    label: "Kavita Sharma",
+    signal: "expect registry unknown",
+    description: "Document number not found in the registry.",
+    docFile: "blacklisted_passport.png",
     registry: true,
     forensics: true,
   },
@@ -129,6 +167,7 @@ export default function VerifyPage() {
   const [performForensics, setPerformForensics] = useState(true);
   const [attachLiveFace, setAttachLiveFace] = useState(false);
   const [liveFace, setLiveFace] = useState<File | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,9 +233,11 @@ export default function VerifyPage() {
     try {
       const docResp = await fetch(`/demo/${s.docFile}`);
       if (!docResp.ok) throw new Error("Scenario asset could not be loaded.");
-      const docBytes = await docResp.arrayBuffer();
-      const docFile = new File([withUniqueSuffix(docBytes)], s.docFile, {
-        type: "image/png",
+      const docBlob = await docResp.blob();
+      const docBytes = await docBlob.arrayBuffer();
+      const docMime = docBlob.type || (s.docFile.endsWith(".jpeg") ? "image/jpeg" : "image/png");
+      const docFile = new File([withUniqueSuffix(docBytes, docMime)], s.docFile, {
+        type: docMime,
       });
       const err = validateFile(docFile);
       if (err) {
@@ -268,6 +309,7 @@ export default function VerifyPage() {
           case_description: description || undefined,
           check_registry: checkRegistry,
           perform_forensics: performForensics,
+          scenario: selectedScenario?.key || undefined,
         },
       });
       setCaseId(created.id);
@@ -348,7 +390,7 @@ export default function VerifyPage() {
             subtitle="Reproducible synthetic cases run through the real verification pipeline — results are always live API data"
           />
           <div className="p-5">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {DEMO_SCENARIOS.map((s) => {
                 const active = selectedScenario?.key === s.key;
                 const Icon = SCENARIO_ICONS[s.key];
@@ -578,25 +620,18 @@ export default function VerifyPage() {
             {attachLiveFace ? (
               <div className="flex items-center gap-3 rounded-lg bg-[#f6f7fb] p-3 text-sm text-[var(--muted)]">
                 <span className="truncate">
-                  {liveFace ? liveFace.name : "No live face attached"}
+                  {liveFace ? liveFace.name : "No live face captured yet"}
                 </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  className="sr-only"
-                  id="live-face-input"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) setLiveFace(f);
-                    e.target.value = "";
-                  }}
-                />
-                <label
-                  htmlFor="live-face-input"
-                  className="ml-auto cursor-pointer text-xs font-medium text-neutral-500 hover:text-black"
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setCameraOpen(true)}
+                  disabled={running}
                 >
-                  {liveFace ? "Replace" : "Choose file"}
-                </label>
+                  <Camera className="h-3.5 w-3.5" aria-hidden />
+                  {liveFace ? "Recapture" : "Open camera"}
+                </Button>
               </div>
             ) : null}
 
@@ -637,16 +672,29 @@ export default function VerifyPage() {
           </div>
         </Card>
       ) : null}
+
+      <LiveFaceCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(f) => {
+          setLiveFace(f);
+          setAttachLiveFace(true);
+        }}
+      />
     </div>
   );
 }
 
 const SCENARIO_ICONS: Record<string, typeof ShieldCheck> = {
-  genuine: ShieldCheck,
-  tampered: FileWarning,
-  expired: CalendarX2,
-  blacklisted: Ban,
-  impersonation: UserX,
+  aadhaar: ShieldCheck,
+  suresh: ShieldCheck,
+  rajesh: CalendarX2,
+  amit: FileWarning,
+  priya: ShieldCheck,
+  neha: FileScan,
+  rohit: UserX,
+  anil: FileWarning,
+  kavita: Ban,
 };
 
 function ScanIcon() {

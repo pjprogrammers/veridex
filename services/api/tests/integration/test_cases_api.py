@@ -107,3 +107,68 @@ async def test_case_not_found(api_client):
     import uuid
     resp = await client.get(f"/api/v1/cases/{uuid.uuid4()}", headers=headers)
     assert resp.status_code == 404
+
+
+async def test_new_case_piyush_demo_stores_values_and_anchors_audit(api_client, db_session):
+    """A case created with the piyush Aadhaar scenario must persist the actual
+    extracted values and anchor a result hash in the audit chain."""
+    import uuid
+
+    from sqlalchemy import select
+
+    from app.models.models import AuditLog, DocumentRecord, VerificationCase
+
+    client, headers = api_client
+    r = await client.post(
+        "/api/v1/cases",
+        json={"case_description": "Piyush Aadhaar demo", "scenario": "aadhaar"},
+        headers=headers,
+    )
+    assert r.status_code == 201, r.text
+    case_id = r.json()["id"]
+
+    doc = DocumentRecord(
+        case_id=uuid.UUID(case_id),
+        content_hash="a" * 64,
+        mime_type="image/jpeg",
+        file_size=1234,
+    )
+    db_session.add(doc)
+    await db_session.commit()
+    await db_session.refresh(doc)
+
+    resp = await client.post(
+        f"/api/v1/verification/{doc.id}/full?check_registry=true",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["demo"] is True
+    fields = body["verification"]["extracted_fields"]
+    assert fields["document_number"] == "5457 0950 4811"
+    assert fields["full_name"] == "पीयूष वर्मा"
+    assert fields["name_romanized"] == "PIYUSH VERMA"
+    assert fields["cid/VID"] == "9103 2996 4131 2258"
+    assert body["verification"]["risk"]["level"] == "LOW"
+
+    await db_session.refresh(doc)
+    assert doc.document_type == "aadhaar"
+    assert doc.extracted_fields["document_number"] == "5457 0950 4811"
+    assert doc.verification_data["extracted_fields"]["name_romanized"] == "PIYUSH VERMA"
+
+    case = await db_session.get(VerificationCase, uuid.UUID(case_id))
+    assert case.case_metadata["scenario"] == "aadhaar"
+    assert len(case.case_metadata["verification_hash"]) == 64
+    assert case.document_hash == "a" * 64
+
+    entry = await db_session.scalar(
+        select(AuditLog).where(AuditLog.case_id == uuid.UUID(case_id)).order_by(
+            AuditLog.id.desc()
+        )
+    )
+    assert entry.action == "verification_completed"
+    assert len(entry.payload["verification_hash"]) == 64
+    assert entry.payload["extracted_fields"]["document_number"] == "5457 0950 4811"
+
+    chain = await client.get(f"/api/v1/audit/verify/{case_id}", headers=headers)
+    assert chain.json()["valid"] is True

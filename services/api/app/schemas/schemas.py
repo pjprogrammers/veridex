@@ -43,6 +43,7 @@ class VerificationRequest(BaseModel):
     verify_face_against: Optional[str] = None  # identity to compare face against
     check_registry: bool = True
     perform_forensics: bool = True
+    scenario: Optional[str] = None  # static demo scenario key (SIH prototype)
 
 
 class DocumentUploadResponse(BaseModel):

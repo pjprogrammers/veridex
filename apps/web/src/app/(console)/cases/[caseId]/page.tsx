@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Fingerprint, Scale } from "lucide-react";
+import { Camera, Fingerprint, Scale } from "lucide-react";
 import { api, errorFn } from "@/lib/api";
 import type {
   AuditEntry,
@@ -12,6 +12,7 @@ import type {
   CaseStatus,
   VerificationReport,
 } from "@/lib/types";
+import { LiveFaceCapture } from "@/components/live-face-capture";
 import { RiskBadge, RiskGauge } from "@/components/risk";
 import {
   RiskReasons,
@@ -55,6 +56,7 @@ export default function CaseDetailPage() {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationReport | null>(null);
   const [liveFace, setLiveFace] = useState<File | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -340,32 +342,22 @@ export default function CaseDetailPage() {
               {busy === "verify" ? <Spinner /> : null}
               <Scale className="h-4 w-4" aria-hidden /> Full verification
             </Button>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text)]">
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setLiveFace(f);
-                  e.target.value = "";
-                }}
-              />
-              {liveFace ? (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full bg-neutral-200/70 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-400/40"
-                >
-                  live face: {liveFace.name}
-                  <button type="button" onClick={() => setLiveFace(null)}>
-                    ✕
-                  </button>
-                </span>
-              ) : (
-                <span className="text-xs font-medium text-neutral-500 hover:text-black">
-                  + attach live face
-                </span>
-              )}
-            </label>
+            <Button
+              variant="secondary"
+              onClick={() => setCameraOpen(true)}
+              disabled={busy !== null}
+            >
+              <Camera className="h-4 w-4" aria-hidden />
+              {liveFace ? "Recapture live face" : "Attach live face"}
+            </Button>
+            {liveFace ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-200/70 px-2.5 py-0.5 text-xs font-medium text-neutral-600 ring-1 ring-inset ring-neutral-400/40">
+                live face: {liveFace.name}
+                <button type="button" onClick={() => setLiveFace(null)}>
+                  ✕
+                </button>
+              </span>
+            ) : null}
           </div>
         </Card>
       ) : null}
@@ -436,7 +428,7 @@ export default function CaseDetailPage() {
             </div>
             <div className="text-xs opacity-90">{auditVerify.message}</div>
             {auditVerify.integrity_issues.length > 0 ? (
-              <pre className="mt-2 font-mono text-[11px]">
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px]">
                 {JSON.stringify(auditVerify.integrity_issues, null, 2)}
               </pre>
             ) : null}
@@ -455,12 +447,12 @@ export default function CaseDetailPage() {
           <ul className="divide-y divide-[var(--border)]">
             {audit.map((entry) => (
               <li key={entry.id} className="px-5 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Badge className="bg-[#f6f7fb] text-[var(--muted)] ring-[var(--border)]">
                       #{entry.id}
                     </Badge>
-                    <span className="text-sm font-medium text-[var(--text)]">
+                    <span className="min-w-0 text-sm font-medium text-[var(--text)]">
                       {entry.action}
                     </span>
                     {entry.actor_role ? (
@@ -469,7 +461,7 @@ export default function CaseDetailPage() {
                       </Badge>
                     ) : null}
                   </div>
-                  <span className="text-xs text-[var(--muted)]">
+                  <span className="whitespace-nowrap text-xs text-[var(--muted)]">
                     {formatDate(entry.timestamp)}
                   </span>
                 </div>
@@ -478,15 +470,21 @@ export default function CaseDetailPage() {
                     {JSON.stringify(entry.payload, null, 2)}
                   </pre>
                 ) : null}
-                <div className="mt-1.5 flex items-center gap-3 font-mono text-[10px] text-[var(--muted)]">
-                  <span>prev: {entry.previous_hash ?? "—"}</span>
-                  <span>cur: {entry.current_hash?.slice(0, 16)}…</span>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-[var(--muted)]">
+                  <span className="min-w-0 break-all">prev: {entry.previous_hash ?? "—"}</span>
+                  <span className="whitespace-nowrap">cur: {entry.current_hash?.slice(0, 16)}…</span>
                 </div>
               </li>
             ))}
           </ul>
         )}
       </Card>
+
+      <LiveFaceCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(f) => setLiveFace(f)}
+      />
     </div>
   );
 }

@@ -253,7 +253,7 @@ export function StatDisplay({
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-1 text-sm sm:grid-cols-1">
       <span className="text-[var(--muted)]">{label}</span>
-      <span className="text-right font-medium text-[var(--text)] sm:text-left">
+      <span className="min-w-0 break-all text-right font-medium text-[var(--text)] sm:text-left">
         {value}
         {suffix ? <span className="ml-1 text-xs text-[var(--muted)]">{suffix}</span> : null}
       </span>

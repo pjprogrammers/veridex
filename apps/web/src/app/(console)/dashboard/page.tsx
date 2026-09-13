@@ -11,6 +11,7 @@ import { api, errorFn } from "@/lib/api";
 import { useCountUp } from "@/lib/use-count-up";
 import type { CaseListResponse, RiskLevel, CaseRecord } from "@/lib/types";
 import { RiskBadge } from "@/components/risk";
+import { DemoDashboard } from "@/components/verification/DemoDashboard";
 import { Alert, Badge, Card, Skeleton } from "@/components/ui";
 import {
   cn,
@@ -187,9 +188,12 @@ export default function DashboardPage() {
         </Alert>
       ) : null}
 
+      {/* SIH static demonstration summary (frontend-only, synthetic) */}
+      <DemoDashboard />
+
       {/* Filter row (reference .filter-row) */}
-      <div className="flex items-center justify-end gap-2.5">
-        <div className="segmented">
+      <div className="flex flex-wrap items-center justify-end gap-2.5">
+        <div className="segmented shrink-0">
           <button type="button">Day</button>
           <button type="button">Week</button>
           <button type="button" className="active">Month</button>

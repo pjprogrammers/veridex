@@ -350,11 +350,15 @@ function DecisionBadge({ decision }: { decision: Verdict }) {
 }
 
 const DEMO_LABELS: Record<string, string> = {
-  genuine: "Genuine",
-  tampered: "Tampered",
-  expired: "Expired",
-  blacklisted: "Blacklisted",
-  impersonation: "Impersonation",
+  aadhaar: "Aadhaar · Piyush Verma",
+  suresh: "Suresh Kumar",
+  rajesh: "Rajesh Sharma",
+  amit: "Amit Singh",
+  priya: "Priya Verma",
+  neha: "Neha Gupta",
+  rohit: "Rohit Mehta",
+  anil: "Anil Kapoor",
+  kavita: "Kavita Sharma",
 };
 
 function DemoBadge({ demoKey }: { demoKey: string }) {
@@ -566,7 +570,7 @@ function MRZSection({
                               <td className="py-1.5 pr-3 text-[var(--muted)]">
                                 {k.replace(/_/g, " ")}
                               </td>
-                              <td className="py-1.5 font-medium text-[var(--text)]">{v || "—"}</td>
+                              <td className="py-1.5 break-all font-medium text-[var(--text)]">{v || "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -644,7 +648,7 @@ function VisualMRZComparison({ comparison }: { comparison: MRZExtractionResponse
           {comparison.severity}
         </Badge>
       </div>
-      <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
+      <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -658,8 +662,8 @@ function VisualMRZComparison({ comparison }: { comparison: MRZExtractionResponse
             {comparison.comparisons.map((c) => (
               <tr key={c.field_name} className="border-b border-[var(--border)] last:border-0">
                 <td className="px-3 py-2 text-[var(--muted)]">{c.field_name.replace(/_/g, " ")}</td>
-                <td className="px-3 py-2 text-[var(--text)]">{c.visual_value || "—"}</td>
-                <td className="px-3 py-2 text-[var(--text)]">{c.mrz_value || "—"}</td>
+                <td className="px-3 py-2 break-all text-[var(--text)]">{c.visual_value || "—"}</td>
+                <td className="px-3 py-2 break-all text-[var(--text)]">{c.mrz_value || "—"}</td>
                 <td className="px-3 py-2 text-right">
                   {c.verdict === "MATCH" ? (
                     <Badge className="bg-neutral-200/70 text-neutral-600 ring-neutral-400/40">Match</Badge>
@@ -741,7 +745,7 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Extracted fields
             </div>
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[#f8f9fc] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -756,7 +760,7 @@ function OCRSection({ ocr }: { ocr: OCRExtractionResult }) {
                       <td className="px-3 py-2 text-[var(--muted)]">
                         {f.field_name.replace(/_/g, " ")}
                       </td>
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">
+                      <td className="px-3 py-2 break-all font-medium text-[var(--text)]">
                         {f.value}
                       </td>
                       <td className="px-3 py-2">

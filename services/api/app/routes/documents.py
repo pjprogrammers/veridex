@@ -270,6 +270,36 @@ async def classify_document(
             detail="Classification is only supported for image documents (JPEG/PNG/WEBP)",
         )
 
+    from app.static_demo import (
+        known_scenario,
+        scenario_for_document,
+        static_record_payload,
+    )
+
+    scenario_key = await scenario_for_document(db, doc)
+    scenario = known_scenario(scenario_key)
+    if scenario:
+        payload = static_record_payload(scenario)
+        doc.classification_data = payload["classification_data"]  # type: ignore[assignment]
+        doc.document_type = payload["document_type"]  # type: ignore[assignment]
+        doc.status = DOCUMENT_STATE_READY  # type: ignore[assignment]
+        await db.commit()
+
+        await append_audit_entry(
+            db,
+            case_id=doc.case_id,
+            action="document_classified",
+            actor_id=uuid.UUID(current_user["user_id"]),
+            actor_role=current_user.get("role"),
+            payload={
+                "document_id": str(doc.id),
+                "document_type": payload["document_type"],
+                "demo_scenario": scenario_key,
+            },
+        )
+        await db.commit()
+        return _document_to_dict(doc)
+
     doc.status = DOCUMENT_STATE_CLASSIFYING  # type: ignore[assignment]
     doc.processing_error = None  # type: ignore[assignment]
     await db.commit()
@@ -355,6 +385,17 @@ async def extract_mrz(
             status_code=422,
             detail="MRZ extraction is only supported for image documents (JPEG/PNG/WEBP)",
         )
+
+    from app.static_demo import (
+        known_scenario,
+        scenario_for_document,
+        static_mrz,
+    )
+
+    scenario_key = await scenario_for_document(db, doc)
+    scenario = known_scenario(scenario_key)
+    if scenario:
+        return static_mrz(scenario, str(doc.id))
 
     try:
         from app.pipeline.ocr import get_ocr_engine
@@ -565,6 +606,21 @@ async def run_forensics(
     from app.forensics.engine import forensic_pipeline
 
     doc = await _get_document(db, document_id)
+
+    from app.static_demo import (
+        known_scenario,
+        scenario_for_document,
+        static_forensics,
+        static_record_payload,
+    )
+
+    scenario_key = await scenario_for_document(db, doc)
+    scenario = known_scenario(scenario_key)
+    if scenario:
+        payload = static_record_payload(scenario)
+        doc.forensic_data = payload["forensic_data"]  # type: ignore[assignment]
+        await db.commit()
+        return static_forensics(scenario, str(doc.id))
 
     data = load_original(doc.processed_key or doc.storage_key or doc.original_key)  # type: ignore[arg-type]
     image, _ = verify_image_integrity(data)

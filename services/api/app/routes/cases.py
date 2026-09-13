@@ -53,6 +53,9 @@ async def create_case(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new verification case."""
+    from app.static_demo import known_scenario
+
+    scenario = request.scenario if known_scenario(request.scenario) else None
     case = VerificationCase(
         case_number=await _generate_case_number(db),
         created_by=uuid.UUID(current_user["user_id"]),
@@ -61,6 +64,7 @@ async def create_case(
             "verify_face_against": request.verify_face_against,
             "check_registry": request.check_registry,
             "perform_forensics": request.perform_forensics,
+            "scenario": scenario,
         },
     )
     db.add(case)
@@ -307,6 +311,41 @@ async def analyze_document(
     doc = await db.get(DocumentRecord, document_id)
     if not doc or doc.case_id != case_id:
         raise HTTPException(status_code=404, detail="Document not found in this case")
+
+    from app.static_demo import (
+        known_scenario,
+        scenario_for_document,
+        static_analysis,
+        static_record_payload,
+    )
+
+    scenario_key = await scenario_for_document(db, doc)
+    scenario = known_scenario(scenario_key)
+    if scenario:
+        payload = static_record_payload(scenario)
+        doc.document_type = payload["document_type"]  # type: ignore[assignment]
+        doc.quality_score = payload["quality_score"]  # type: ignore[assignment]
+        doc.mrz_data = payload["mrz_data"]  # type: ignore[assignment]
+        doc.extracted_fields = payload["extracted_fields"]  # type: ignore[assignment]
+        doc.classification_data = payload["classification_data"]  # type: ignore[assignment]
+        doc.ocr_extracted_fields = payload["ocr_extracted_fields"]  # type: ignore[assignment]
+        doc.forensic_data = payload["forensic_data"]  # type: ignore[assignment]
+        await db.commit()
+
+        await append_audit_entry(
+            db,
+            case_id=case_id,
+            action="document_analyzed",
+            actor_id=uuid.UUID(current_user["user_id"]),
+            actor_role=current_user.get("role"),
+            payload={
+                "document_id": str(doc.id),
+                "document_type": payload["document_type"],
+                "demo_scenario": scenario_key,
+            },
+        )
+        await db.commit()
+        return {"success": True, "analysis": static_analysis(scenario, str(doc.id)), "demo": True}
 
     from app.services.document_analysis import run_document_analysis
 

@@ -34,7 +34,21 @@ interface CreateForm {
   check_registry: boolean;
   perform_forensics: boolean;
   verify_face_against: string;
+  scenario: string;
 }
+
+const SCENARIO_OPTIONS: Array<{ key: string; label: string; note: string }> = [
+  { key: "aadhaar", label: "Piyush · Aadhaar (default demo)", note: "genuine CLEAR" },
+  { key: "", label: "Live / no scenario", note: "Run the real pipeline" },
+  { key: "suresh", label: "Suresh Kumar", note: "CLEAR" },
+  { key: "rajesh", label: "Rajesh Sharma", note: "EXPIRED" },
+  { key: "amit", label: "Amit Singh", note: "MANUAL REVIEW" },
+  { key: "priya", label: "Priya Verma", note: "CLEAR" },
+  { key: "neha", label: "Neha Gupta", note: "MRZ mismatch" },
+  { key: "rohit", label: "Rohit Mehta", note: "face mismatch" },
+  { key: "anil", label: "Anil Kapoor", note: "tampering detected" },
+  { key: "kavita", label: "Kavita Sharma", note: "registry unknown" },
+];
 
 export default function CasesPage() {
   const router = useRouter();
@@ -51,6 +65,7 @@ export default function CasesPage() {
     check_registry: true,
     perform_forensics: true,
     verify_face_against: "",
+    scenario: "aadhaar",
   });
 
   const load = useCallback(async () => {
@@ -84,6 +99,7 @@ export default function CasesPage() {
         check_registry: form.check_registry,
         perform_forensics: form.perform_forensics,
         verify_face_against: form.verify_face_against || undefined,
+        scenario: form.scenario || undefined,
       };
       const res = await api<CaseRecord>("/cases", { method: "POST", json: payload });
       router.push(`/cases/${res.id}`);
@@ -280,6 +296,27 @@ export default function CasesPage() {
                     setForm((f) => ({ ...f, description: e.target.value }))
                   }
                 />
+              </div>
+              <div>
+                <Label>Demo scenario (optional)</Label>
+                <Select
+                  value={form.scenario}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, scenario: e.target.value }))
+                  }
+                >
+                  {SCENARIO_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label} — {o.note}
+                    </option>
+                  ))}
+                </Select>
+                {form.scenario ? (
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">
+                    The pipeline will return the static demonstration result for{" "}
+                    {form.scenario}. DEMO / SYNTHETIC DATA.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label>Verify face against identity (optional)</Label>

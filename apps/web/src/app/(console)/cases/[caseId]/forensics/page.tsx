@@ -291,10 +291,10 @@ function ForensicsInner() {
                   {flags.map((f, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[#f6f7fb] px-3 py-2 text-sm"
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-lg border border-[var(--border)] bg-[#f6f7fb] px-3 py-2 text-sm"
                     >
-                      <div>
-                        <div className="font-medium text-[var(--text)]">
+                      <div className="min-w-0">
+                        <div className="break-words font-medium text-[var(--text)]">
                           {String(f.signal ?? "signal")}
                         </div>
                         {f.description ? (
@@ -303,7 +303,7 @@ function ForensicsInner() {
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-3">
                         <span className="text-xs text-[var(--muted)]">
                           {Math.round(Number(f.score ?? 0) * 100)}%
                         </span>

@@ -50,6 +50,7 @@ export interface NewCaseInput {
   verify_face_against?: string;
   check_registry: boolean;
   perform_forensics: boolean;
+  scenario?: string;
 }
 
 export interface User {
